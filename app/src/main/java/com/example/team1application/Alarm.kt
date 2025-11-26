@@ -3,8 +3,18 @@ package com.example.team1application
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 
 class Alarm {
+
+    // --- タイムゾーンを設定するヘルパー関数を定義 ---
+    private fun getJstCalendar(): Calendar {
+        val calendar = Calendar.getInstance()
+        // タイムゾーンを "Asia/Tokyo" (日本標準時: JST) に設定
+        calendar.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
+        return calendar
+    }
+
     /**
      * 現在の時刻を "時:分:秒" の形式で取得する。
      * minSdk 24でも動作するように java.util.Calendar を使用。
@@ -17,6 +27,7 @@ class Alarm {
         // 日付と時刻のフォーマットを指定（例: 時:分:秒）
         // Locale.getDefault() で端末のロケールを使用
         val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        dateFormat.timeZone = TimeZone.getTimeZone("Asia/Tokyo") // SimpleDateFormatにも設定
 
         // CalendarインスタンスからDateオブジェクトを取得し、フォーマットを適用
         return dateFormat.format(calendar.time)

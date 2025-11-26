@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
 // ユーザーが提供した `Greeting` を `GreetingContent` に変更し、時刻表示と時計描画ロジックを追加
 @Composable
 fun GreetingContent(modifier: Modifier = Modifier) {
-    // alarmクラスのインスタンスを作成 (再コンポジションで再作成されないように remember を使用しても良いが、ここではシンプルに)
+    // Alarmクラスのインスタンスを作成 (再コンポジションで再作成されないように remember を使用しても良いが、ここではシンプルに)
     val myAlarm = Alarm()
 
     // 現在の時刻と日付、針の角度を状態として保持
@@ -85,10 +85,6 @@ fun GreetingContent(modifier: Modifier = Modifier) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally // 中央揃え
     ) {
-        Text(
-            text = "Hello Android!",
-            style = MaterialTheme.typography.headlineMedium
-        )
         Spacer(modifier = Modifier.height(16.dp))
 
         // --- アナログ時計の描画 ---
