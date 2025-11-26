@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Team1ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    HomeScreen()
                     Greeting(
                         name = "Android",
                         modifier = Modifier.padding(innerPadding)
@@ -32,10 +33,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+
 }
 
 @Preview(showBackground = true)
