@@ -143,7 +143,7 @@ fun ClockDisplay(modifier: Modifier = Modifier, handAngles: Triple<Float, Float,
         // 時針 (短く太い)
         drawHand(
             angle = hourAngle,
-            length = radius * 0.5f,
+            length = radius * 0.6f,
             width = 8.dp.toPx(),
             color = Color.DarkGray,
             center = center
@@ -152,7 +152,7 @@ fun ClockDisplay(modifier: Modifier = Modifier, handAngles: Triple<Float, Float,
         // 分針 (長く細い)
         drawHand(
             angle = minuteAngle,
-            length = radius * 0.7f,
+            length = radius * 0.9f,
             width = 5.dp.toPx(),
             color = Color.DarkGray,
             center = center

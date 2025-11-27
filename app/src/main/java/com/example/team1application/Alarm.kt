@@ -22,7 +22,7 @@ class Alarm {
      */
     fun getCurrentTime(): String {
         // 現在のインスタンスを取得
-        val calendar = Calendar.getInstance()
+        val calendar = getJstCalendar()
 
         // 日付と時刻のフォーマットを指定（例: 時:分:秒）
         // Locale.getDefault() で端末のロケールを使用
@@ -38,7 +38,7 @@ class Alarm {
      * @return 現在日付と曜日の文字列 (例: "2025/11/26 (水)")
      */
     fun getCurrentDate(): String {
-        val calendar = Calendar.getInstance()
+        val calendar = getJstCalendar()
         // フォーマット指定 (yyyy:年, MM:月, dd:日, E:曜日)
         val dateFormat = SimpleDateFormat("yyyy/MM/dd (E)", Locale.getDefault())
         return dateFormat.format(calendar.time)
@@ -51,7 +51,7 @@ class Alarm {
      * @return Triple<時, 分, 秒>
      */
     fun getHoursMinutesSeconds(): Triple<Int, Int, Int> {
-        val calendar = Calendar.getInstance()
+        val calendar = getJstCalendar()
         val hour = calendar.get(Calendar.HOUR) // 12時間形式で取得 (0-11)
         val minute = calendar.get(Calendar.MINUTE)
         val second = calendar.get(Calendar.SECOND)
