@@ -5,7 +5,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-class Alarm {
+class Clock {
 
     // --- タイムゾーンを設定するヘルパー関数を定義 ---
     private fun getJstCalendar(): Calendar {

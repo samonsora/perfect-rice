@@ -53,12 +53,12 @@ class MainActivity : ComponentActivity() {
 // ユーザーが提供した `Greeting` を `GreetingContent` に変更し、時刻表示と時計描画ロジックを追加
 @Composable
 fun GreetingContent(modifier: Modifier = Modifier) {
-    // Alarmクラスのインスタンスを作成 (再コンポジションで再作成されないように remember を使用しても良いが、ここではシンプルに)
-    val myAlarm = Alarm()
+    // Clockクラスのインスタンスを作成 (再コンポジションで再作成されないように remember を使用しても良いが、ここではシンプルに)
+    val myClock = Clock()
 
     // 現在の時刻と日付、針の角度を状態として保持
-    var currentTime by remember { mutableStateOf(myAlarm.getCurrentTime()) }
-    var currentDate by remember { mutableStateOf(myAlarm.getCurrentDate()) }
+    var currentTime by remember { mutableStateOf(myClock.getCurrentTime()) }
+    var currentDate by remember { mutableStateOf(myClock.getCurrentDate()) }
     // 角度は Triple<時, 分, 秒>
     var handAngles by remember { mutableStateOf(Triple(0f, 0f, 0f)) }
 
@@ -69,12 +69,12 @@ fun GreetingContent(modifier: Modifier = Modifier) {
             // ここでは秒針を滑らかにするため、毎フレーム更新
             withFrameMillis {
                 // 時刻を更新
-                currentTime = myAlarm.getCurrentTime()
-                currentDate = myAlarm.getCurrentDate()
+                currentTime = myClock.getCurrentTime()
+                currentDate = myClock.getCurrentDate()
 
                 // 角度を計算
-                val (h, m, s) = myAlarm.getHoursMinutesSeconds()
-                handAngles = myAlarm.calculateHandAngles(h, m, s)
+                val (h, m, s) = myClock.getHoursMinutesSeconds()
+                handAngles = myClock.calculateHandAngles(h, m, s)
             }
         }
     }
@@ -196,8 +196,8 @@ private fun DrawScope.drawHand(angle: Float, length: Float, width: Float, color:
 fun GreetingPreview() {
     Team1ApplicationTheme {
         // プレビューでは固定の時刻（例: 10時10分30秒）で描画
-        val myAlarm = Alarm()
-        val fixedAngles = myAlarm.calculateHandAngles(10, 10, 30)
+        val myClock = Clock()
+        val fixedAngles = myClock.calculateHandAngles(10, 10, 30)
 
         Column {
             GreetingContent(Modifier.padding(16.dp))
