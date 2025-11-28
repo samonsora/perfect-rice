@@ -55,5 +55,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 fun HomeScreenPreview() {
     Team1ApplicationTheme {
         HomeScreen()
+
     }
 }
