@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
 
                     if (isTitle) {
 
-                    TitleScreen(onTap = { isTitle = false },
+                      TitleScreen(onTap = { isTitle = false },
                         modifier = Modifier.padding(innerPadding)
                     )
                     } else {
@@ -37,10 +37,8 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
                     }
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+
+
                 }
 
             }
