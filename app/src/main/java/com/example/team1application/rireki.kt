@@ -80,7 +80,7 @@ fun parseSleepDuration(sleepTime: String): Float {
 fun RirekiScreen(modifier: Modifier = Modifier) {
     val allRecords = getDummyRecords()
 
-    // 状態をRirekiScreenで定義 (ステートホイスティング)
+    // 状態iをRirekScreenで定義 (ステートホイスティング)
     var startDate by remember { mutableStateOf<Long?>(null) }
     var endDate by remember { mutableStateOf<Long?>(null) }
 
