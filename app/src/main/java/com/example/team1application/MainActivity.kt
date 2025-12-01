@@ -46,6 +46,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+//class MainActivity : ComponentActivity() {
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//        enableEdgeToEdge()
+//        setContent {
+//            Team1ApplicationTheme{
+//                RirekiScreen()
+//            }
+//        }
+//    }
+//}
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
