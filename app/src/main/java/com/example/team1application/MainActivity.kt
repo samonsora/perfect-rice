@@ -33,9 +33,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             Team1ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize(),containerColor = Color(0xFFC8A2C8)) { innerPadding ->
-                    CurrentTimeDisplay(
+                    // 今だけのif文。どうせ消すしｗ
+
+                    GetupTimeDisplay(
                         modifier = Modifier.padding(innerPadding)
                     )
+
                 }
             }
         }
