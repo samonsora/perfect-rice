@@ -2,7 +2,9 @@ package com.example.team1application
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,17 +59,25 @@ fun CurrentTimeDisplay(modifier: Modifier = Modifier) {
         // Box内のコンテンツ（Text）を中央に揃える
         contentAlignment = Alignment.Center
     ) {
+
+        // ★ 1. アナログ時計の配置 (画面上部に約40%のスペースを占めさせる)
+        AnalogClock(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp) // 高さを固定してアナログ時計にスペースを与える
+                .align(Alignment.TopCenter) // Boxの上部中央に配置
+                .offset(y = 60.dp)
+        )
+
         // 現在時刻を表示するTextコンポーザブル
         Text(
-            text = "現在の時刻\n",
-            // デフォルトのModifierを適用。ここではTextの装飾は最低限。
-            modifier = Modifier,
-            fontSize = 32.sp,
-            // テキストを中央揃えにするためにTextAlign.Centerを使用するのが一般的ですが、
-            // Boxの中央配置だけでも画面中央には表示されます。
+            text = "現在時刻",
+            fontSize = 24.sp,
+            color = Color.Black,
+            modifier = Modifier.padding(bottom = 8.dp) // 時刻との間にパディング
         )
         Text(
-            text = "\n\n\n$currentTimeString",
+            text = "\n\n\n\n\n$currentTimeString",
             // デフォルトのModifierを適用。ここではTextの装飾は最低限。
             modifier = Modifier,
             fontSize = 60.sp,
