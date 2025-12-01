@@ -1,4 +1,4 @@
-package com.example.team1application.ui.theme
+package com.example.team1application
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
@@ -26,12 +26,93 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.team1application.ui.theme.Team1ApplicationTheme
 import kotlinx.coroutines.isActive
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
+/**
+ * 競合を避けた、時計表示機能のみを持つ新しい画面コンポーネント。
+ * これは、提供された GreetingContent のロジックを再利用しています。
+ *
+ * @param modifier 親のレイアウト設定を受け取るModifier
+ */
+@Composable
+fun ClockScreen(modifier: Modifier = Modifier) {
+    // Clockクラスのインスタンスを作成
+    val myClock = remember { Clock() } // rememberで再コンポジション時に再作成されないようにする
+
+    // 現在の時刻と日付、針の角度を状態として保持
+    var currentTime by remember { mutableStateOf(myClock.getCurrentTime()) }
+    var currentDate by remember { mutableStateOf(myClock.getCurrentDate()) }
+    var handAngles by remember { mutableStateOf(Triple(0f, 0f, 0f)) }
+
+    // 毎フレーム（または毎秒）時刻を更新する処理
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            // 秒針を滑らかにするため、毎フレーム更新
+            withFrameMillis {
+                // 時刻を更新
+                currentTime = myClock.getCurrentTime()
+                currentDate = myClock.getCurrentDate()
+
+                // 角度を計算
+                val (h, m, s) = myClock.getHoursMinutesSeconds()
+                handAngles = myClock.calculateHandAngles(h, m, s)
+            }
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp), // パディングを増やして見やすく
+        horizontalAlignment = Alignment.CenterHorizontally // 中央揃え
+    ) {
+        // 🚨 タイトル
+        Text(
+            text = "リアルタイムアナログ時計",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // --- アナログ時計の描画 ---
+        ClockDisplay(
+            modifier = Modifier.size(300.dp), // 時計のサイズを指定
+            handAngles = handAngles
+        )
+        // --- アナログ時計の描画 終了 ---
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- デジタル表示 ---
+        Text(
+            text = "現在の日付: $currentDate",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "現在の時刻: $currentTime",
+            style = MaterialTheme.typography.displaySmall // デジタル時計を目立たせる
+        )
+    }
+}
+
+// ClockDisplay およびその他のヘルパー関数 (DrawScope.drawHand, Clockクラス) は
+// 既存のファイル（またはClockScreen.kt）にそのまま残してください。
+
+// --------------------------------------------------
+// 📺 プレビュー
+// --------------------------------------------------
+@Preview(showBackground = true)
+@Composable
+fun ClockScreenPreview() {
+    Team1ApplicationTheme {
+        ClockScreen()
+    }
+}
 
 class Clock {
 
@@ -262,23 +343,5 @@ private fun DrawScope.drawHand(angle: Float, length: Float, width: Float, color:
             strokeWidth = width,
             cap = StrokeCap.Round
         )
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Team1ApplicationTheme {
-        // プレビューでは固定の時刻（例: 10時10分30秒）で描画
-        val myClock = Clock()
-        val fixedAngles = myClock.calculateHandAngles(10, 10, 30)
-
-        Column {
-            GreetingContent(Modifier.padding(16.dp))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "プレビュー用固定表示:", modifier = Modifier.padding(horizontal = 16.dp))
-            ClockDisplay(modifier = Modifier.size(200.dp), handAngles = fixedAngles)
-        }
     }
 }

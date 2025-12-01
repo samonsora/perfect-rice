@@ -30,7 +30,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         when (page) {
             0 -> RirekiScreen() // 👈 左のページ
             1 -> HomeMainContent() // 🏠 真ん中のページ（元のホーム画面）
-            //2 -> SettingScreen() // 👉 右のページ
+            2 -> ClockScreen() // 👉 右のページ
         }
     }
 }
