@@ -29,9 +29,10 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     ) { page ->
         when (page) {
             0 -> HomeMainContent() // ホーム画面
-            1 -> RirekiScreen() // 履歴
-            2 -> ClockScreen() //
-            3 -> AlarmScreen() //
+            1 -> AlarmScreen() // アラーム設定画面
+            2 -> RirekiScreen() // 履歴表示画面
+            3 -> ClockScreen() // 現在時刻表示画面
+             //
         }
     }
 }

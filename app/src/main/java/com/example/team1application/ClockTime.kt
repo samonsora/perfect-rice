@@ -10,7 +10,7 @@ import java.util.TimeZone
  * このクラスはUIに依存せず、時間データの提供のみを行います。
  * @constructor 新しいClockTimeインスタンスを作成します。
  */
-class ClockTime1 {
+class ClockTime {
 
     // --- タイムゾーンを設定するヘルパー関数を定義 ---
     private fun getJstCalendar(): Calendar {

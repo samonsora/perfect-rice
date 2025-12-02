@@ -107,7 +107,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
                     alarm = alarm,
                     onToggleActive = { newState ->
                         println("アラーム ID ${alarm.id} の状態が $newState に切り替わりました")
-                        // TODO: 実際のアプリでは、ここでViewModelを通じて永続的なデータを更新する
+                        // 実際のアプリでは、ここでViewModelを通じて永続的なデータを更新する
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
