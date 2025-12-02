@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -56,9 +57,12 @@ fun TitleScreen(
     ) {
         // (中身のTextとかはそのまま…)
         Text(
-            text = "　生活習慣\nリペアキット",
+            text = "　生活習慣　\nリペアキット",
             style = MaterialTheme.typography.displayMedium,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        androidx.compose.foundation.layout.Spacer(
+            modifier = Modifier.height(200.dp)
         )
         // ...
     }

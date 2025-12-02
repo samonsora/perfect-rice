@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.team1application.ui.theme.Team1ApplicationTheme
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,20 +32,29 @@ class MainActivity : ComponentActivity() {
             // コンフリクト激戦区
             Team1ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    // 🪄 魔法のスイッチ
                     var isTitle by remember { mutableStateOf(true) }
 
-                    if (isTitle) {
+                    // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
+                    Crossfade(
+                        targetState = isTitle, // このスイッチを見張るよ！
+                        label = "画面切り替え",
+                        // 👇 魔法にかける時間（ミリ秒）。1000 = 1秒。
+                        animationSpec = tween(durationMillis = 700)
+                    ) { isShowingTitle ->
 
-                      TitleScreen(onTap = { isTitle = false },
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                    } else {
-                        // ■ スイッチがOFFになったら、こっち（ホーム）を表示！
-                        HomeScreen(
-                            modifier = Modifier.padding(innerPadding)
-                        )
+                        // ここで中身を出し分けるの！
+                        if (isShowingTitle) {
+                            TitleScreen(
+                                onTap = { isTitle = false },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        } else {
+                            HomeScreen(
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
                     }
-
 
                 }
             }
