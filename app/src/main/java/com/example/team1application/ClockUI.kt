@@ -37,7 +37,7 @@ import kotlinx.coroutines.isActive
 @Composable
 fun ClockScreen(modifier: Modifier = Modifier) {
     // ClockTimeとClockAngleのインスタンスを作成
-    val myClockTime = remember { ClockTime() }
+    val myClockTime = remember { ClockTime1() }
     // 角度計算用のインスタンスを新しく作成
     val myClockAngle = remember { ClockAngle() }
 

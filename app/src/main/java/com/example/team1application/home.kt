@@ -19,8 +19,8 @@ import com.example.team1application.ui.theme.Team1ApplicationTheme
 // 1. これが新しい「大元のホーム画面」！
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
-    // 📖 3ページあって、最初は真ん中（1ページ目）からスタート！
-    val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 1)
+    // 📖 4ページあって、最初は0ページ目からスタート！
+    val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
 
     // ↔️ 横スワイプの魔法陣
     HorizontalPager(
@@ -28,9 +28,10 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize()
     ) { page ->
         when (page) {
-            0 -> RirekiScreen() // 👈 左のページ
-            1 -> HomeMainContent() // 🏠 真ん中のページ（元のホーム画面）
-            2 -> ClockScreen() // 👉 右のページ
+            0 -> HomeMainContent() // ホーム画面
+            1 -> RirekiScreen() // 履歴
+            2 -> ClockScreen() //
+            3 -> AlarmScreen() //
         }
     }
 }
