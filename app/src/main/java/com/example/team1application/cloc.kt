@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlin.math.cos // 三角関数を使用するために必要
 import kotlin.math.sin // 三角関数を使用するために必要
-import kotlin.math.PI // 円周を使用する要
+import kotlin.math.PI // 円周率を使用する要(π)
 import java.util.Calendar // 現在の「分」と「時」を取得するために必要
 import java.util.TimeZone
 

@@ -34,6 +34,7 @@ fun getCurrentTime(): String {
     dateFormat.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
 
     // 現在の日時を取得
+    // 問題点：午後時間を16時みたいに表示できない点
     val currentTime = Date()
 
     // 日時を定義したフォーマットで文字列に変換して返す
