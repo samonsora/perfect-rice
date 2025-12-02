@@ -80,7 +80,7 @@ fun HomeMainContent() {
                 text = timeString,
                 // ✨ ここが巨大化の呪文！ ✨
                 // 100.sp, 120.sp... 数字を大きくすればどこまでもデカくなるよ！
-                fontSize = 110.sp,
+                fontSize = 120.sp,
 
                 // 文字を太くして、デジタル時計っぽくクッキリさせる！
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -111,10 +111,10 @@ fun HomeMainContent() {
             Button(onClick = { /* ボタンの動作 */ }) {
                 Text(text = "記録")
             }
-        } // ← 【修正】下のエリアの Column を閉じる！
+        }
 
-    } // ← 【修正】大元の Column を閉じる！
-} // ← 【修正】関数の終わりを閉じる！
+    }
+}
 
 
 // --------------------------------------------------
