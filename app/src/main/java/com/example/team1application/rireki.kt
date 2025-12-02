@@ -4,14 +4,9 @@ package com.example.team1application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.Button
+import androidx.compose.material3.* // ExposedDropdownMenuBoxなどを含む
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -26,24 +21,21 @@ import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.components.Legend
-import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.rememberDateRangePickerState
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.components.AxisBase
 
 
 // --- データ構造とヘルパー関数 ---
 
-
 /**
  * 1回分の睡眠記録を保持するデータクラス
  */
 data class SleepRecord(
     val date: String,
-    val sleepTime: String,
+    val sleepTime: String, // 例: "7h 30m"
     val wakeUpTime: String,
     val bedtime: String,
-    val snoozeCount: Int,
+    val snoozeCount: Int, // スヌーズ回数
     val snoozeDuration: String
 )
 
@@ -73,6 +65,24 @@ fun parseSleepDuration(sleepTime: String): Float {
     }
 }
 
+// ★ グラフの選択項目を定義するSealed Class ★
+sealed class GraphType(
+    val label: String,
+    val unit: String,
+    val dataExtractor: (SleepRecord) -> Float // データ抽出関数
+) {
+    // 睡眠時間
+    object SleepDuration : GraphType("総睡眠時間", "h", { parseSleepDuration(it.sleepTime) })
+
+    // スヌーズ回数
+    object SnoozeCount : GraphType("スヌーズ回数", "回", { it.snoozeCount.toFloat() })
+
+    companion object {
+        fun values() = listOf(SleepDuration, SnoozeCount)
+    }
+}
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RirekiScreen(modifier: Modifier = Modifier) {
@@ -81,6 +91,11 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
     // 状態iをRirekScreenで定義 (ステートホイスティング)
     var startDate by remember { mutableStateOf<Long?>(null) }
     var endDate by remember { mutableStateOf<Long?>(null) }
+
+    // ★ グラフ選択の状態 ★
+    val graphTypes = GraphType.values()
+    var selectedGraphType: GraphType by remember { mutableStateOf(GraphType.SleepDuration) }
+    var expanded by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN) }
 
@@ -93,7 +108,6 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
                 try {
                     val recordDateMillis = dateFormatter.parse(record.date)?.time ?: 0L
                     val start = startDate!!
-                    // 終了日の23:59:59までを範囲に含めるための調整
                     val end = endDate!! + TimeUnit.DAYS.toMillis(1) - 1
 
                     recordDateMillis in start..end
@@ -104,12 +118,65 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    // ★ 選択されたGraphTypeに基づき、グラフデータを計算 ★
+    val barEntries = remember(filteredRecords, selectedGraphType) {
+        filteredRecords.mapIndexed { index, record ->
+            BarEntry(
+                index.toFloat(),
+                selectedGraphType.dataExtractor(record) // 選択項目に応じた値を抽出
+            )
+        }
+    }
+
+    // X軸ラベルは日付で固定
+    val xAxisLabels = filteredRecords.map { it.date }
+
+
     // Column でセクションを縦に配置
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 8.dp)) {
 
-        // 1. グラフエリア (フィルタリングされたデータを渡す)
-        SleepBarChart(
-            records = filteredRecords,
+        // ★ ドロップダウンメニューの実装 ★
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            TextField(
+                value = selectedGraphType.label,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("表示項目") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+                modifier = Modifier
+                    .menuAnchor(
+                        type = MenuAnchorType.PrimaryNotEditable, // 読み取り専用なのでこれを使用
+                        enabled = true
+                    )
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                graphTypes.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type.label) },
+                        onClick = {
+                            selectedGraphType = type // 選択項目を更新
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+
+        // 1. グラフエリア (加工済みのデータを渡す)
+        CustomBarChart(
+            barEntries = barEntries, // 加工済みのデータ
+            xAxisLabels = xAxisLabels, // X軸ラベル
+            graphType = selectedGraphType, // 選択された GraphType を渡す
             modifier = Modifier.height(300.dp)
         )
 
@@ -150,22 +217,15 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// --- グラフコンポーネント ---
+// --- グラフコンポーネント (汎用化) ---
 
 @Composable
-fun SleepBarChart( // 関数名を内容に合わせて変更しました
-    records: List<SleepRecord>,
+fun CustomBarChart(
+    barEntries: List<BarEntry>, // ★ BarEntryのリストを受け取る
+    xAxisLabels: List<String>, // ★ X軸ラベルを受け取る
+    graphType: GraphType,      // ★ GraphTypeを受け取る
     modifier: Modifier = Modifier
 ) {
-    // 1. データの準備 (BarEntry を使用)
-    val entries: List<BarEntry> = records.mapIndexed { index, record ->
-        BarEntry(index.toFloat(), parseSleepDuration(record.sleepTime))
-    }
-
-    // 2. 解決済み: X軸ラベルの準備（Unresolved reference 'xAxisLabels' の定義）
-    val xAxisLabels = records.map { it.date }
-
-    // 3. AndroidView (BarChartの描画)
     AndroidView(
         modifier = modifier.fillMaxWidth().height(300.dp),
         factory = { context ->
@@ -174,25 +234,33 @@ fun SleepBarChart( // 関数名を内容に合わせて変更しました
                 description.isEnabled = false
                 isDragEnabled = true
                 axisRight.isEnabled = false
+                setScaleEnabled(true) // ズーム有効
+                isHighlightPerTapEnabled = true // ハイライト有効
                 legend.horizontalAlignment = Legend.LegendHorizontalAlignment.RIGHT
+                setBackgroundColor(Color.WHITE) // 背景を白に設定
             }
         },
         update = { chart ->
-            // BarChart型にキャスト
             val barChart = chart
 
-            if (entries.isNotEmpty()) {
-                val barDataSet = BarDataSet(entries, "睡眠時間 (h)").apply {
-                    color = Color.rgb(176, 224, 230)
+            if (barEntries.isNotEmpty()) {
+
+                // 棒の色を動的に設定
+                val barColor = if (graphType == GraphType.SnoozeCount)
+                    Color.rgb(255, 165, 0) // オレンジ
+                else
+                    Color.rgb(176, 224, 230) // 薄い水色
+
+                val barDataSet = BarDataSet(barEntries, "${graphType.label} (${graphType.unit})").apply {
+                    color = barColor
                     valueTextSize = 12f
                     setDrawValues(true)
                 }
 
-                // 4. 修正済み: BarDataの設定を整理し、一度だけ実行する
                 val barData = BarData(barDataSet).apply {
-                    barWidth = 0.6f // 棒の幅を設定
+                    barWidth = 0.6f
                 }
-                barChart.data = barData // これで chart.data の設定は完了
+                barChart.data = barData
 
                 // X軸ラベル配列の安全な取得
                 val labelsArray = if (xAxisLabels.isNotEmpty()) {
@@ -202,7 +270,6 @@ fun SleepBarChart( // 関数名を内容に合わせて変更しました
                 }
 
                 barChart.xAxis.apply {
-                    // X軸ラベルに修正した配列を渡す
                     valueFormatter = IndexAxisValueFormatter(labelsArray)
                     position = XAxis.XAxisPosition.BOTTOM
                     granularity = 1f
@@ -212,15 +279,18 @@ fun SleepBarChart( // 関数名を内容に合わせて変更しました
 
                 barChart.axisLeft.apply {
                     axisMinimum = 0f
-                    axisMaximum = 10f
+                    // Y軸の最大値を項目に応じて動的に設定
+                    axisMaximum = if (graphType == GraphType.SnoozeCount) 5f else 10f
 
+                    // 単位を動的に変更するValueFormatter
                     valueFormatter = object : ValueFormatter() {
                         override fun getAxisLabel(value: Float, axis: AxisBase?): String {
-                            return String.format(Locale.US, "%.1f h", value)
+                            return String.format(Locale.US, "%.1f ${graphType.unit}", value)
                         }
                     }
                 }
-                barChart.animateY(800) // 棒グラフはY軸アニメーション
+                barChart.animateY(800)
+                barChart.notifyDataSetChanged()
                 barChart.invalidate()
             } else {
                 barChart.clear()
