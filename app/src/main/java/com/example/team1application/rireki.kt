@@ -19,12 +19,10 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import android.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
-
-// MPAndroidChart関連のインポート
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
-import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.components.Legend
@@ -32,10 +30,10 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.rememberDateRangePickerState
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.components.AxisBase
-import androidx.core.graphics.toColorInt
 
 
 // --- データ構造とヘルパー関数 ---
+
 
 /**
  * 1回分の睡眠記録を保持するデータクラス
@@ -52,12 +50,12 @@ data class SleepRecord(
 //テスト用ダミーデータ
 fun getDummyRecords(): List<SleepRecord> {
     return listOf(
-        SleepRecord("2025/11/25", "7h 30m", "07:00", "23:30", 2, "10分"),
-        SleepRecord("2025/11/26", "8h 00m", "07:30", "23:30", 0, "0分"),
-        SleepRecord("2025/11/27", "6h 45m", "06:30", "23:45", 3, "15分"),
-        SleepRecord("2025/11/28", "7h 15m", "07:15", "00:00", 1, "5分"),
-        SleepRecord("2025/11/29", "7h 15m", "07:15", "00:00", 1, "5分"),
-        SleepRecord("2025/11/30", "5h 15m", "05:15", "00:00", 1, "5分")
+        SleepRecord("2025/12/2", "7h 30m", "07:00", "23:30", 2, "10分"),
+        SleepRecord("2025/12/3", "8h 00m", "07:30", "23:30", 0, "0分"),
+        SleepRecord("2025/12/4", "6h 45m", "06:30", "23:45", 3, "15分"),
+        SleepRecord("2025/12/5", "7h 15m", "07:15", "00:00", 1, "5分"),
+        SleepRecord("2025/12/6", "7h 15m", "07:15", "00:00", 1, "5分"),
+        SleepRecord("2025/12/7", "5h 15m", "05:15", "00:00", 1, "5分")
     )
 }
 
@@ -110,7 +108,7 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 8.dp)) {
 
         // 1. グラフエリア (フィルタリングされたデータを渡す)
-        SleepLineChart(
+        SleepBarChart(
             records = filteredRecords,
             modifier = Modifier.height(300.dp)
         )
@@ -155,19 +153,24 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
 // --- グラフコンポーネント ---
 
 @Composable
-fun SleepLineChart(
+fun SleepBarChart( // 関数名を内容に合わせて変更しました
     records: List<SleepRecord>,
     modifier: Modifier = Modifier
 ) {
-    val entries = records.mapIndexed { index, record ->
-        Entry(index.toFloat(), parseSleepDuration(record.sleepTime))
+    // 1. データの準備 (BarEntry を使用)
+    val entries: List<BarEntry> = records.mapIndexed { index, record ->
+        BarEntry(index.toFloat(), parseSleepDuration(record.sleepTime))
     }
+
+    // 2. 解決済み: X軸ラベルの準備（Unresolved reference 'xAxisLabels' の定義）
     val xAxisLabels = records.map { it.date }
 
+    // 3. AndroidView (BarChartの描画)
     AndroidView(
         modifier = modifier.fillMaxWidth().height(300.dp),
         factory = { context ->
-            LineChart(context).apply {
+            // BarChart を使用
+            BarChart(context).apply {
                 description.isEnabled = false
                 isDragEnabled = true
                 axisRight.isEnabled = false
@@ -175,44 +178,52 @@ fun SleepLineChart(
             }
         },
         update = { chart ->
+            // BarChart型にキャスト
+            val barChart = chart
+
             if (entries.isNotEmpty()) {
-                val dataSet = LineDataSet(entries, "睡眠時間 (h)").apply {
-                    color = Color.BLUE
-                    setCircleColor(Color.BLUE)
-                    lineWidth = 3f
-                    setDrawFilled(true)
-                    fillColor = "#BBDEFB".toColorInt()
+                val barDataSet = BarDataSet(entries, "睡眠時間 (h)").apply {
+                    color = Color.rgb(176, 224, 230)
                     valueTextSize = 12f
                     setDrawValues(true)
                 }
 
-                chart.data = LineData(dataSet)
+                // 4. 修正済み: BarDataの設定を整理し、一度だけ実行する
+                val barData = BarData(barDataSet).apply {
+                    barWidth = 0.6f // 棒の幅を設定
+                }
+                barChart.data = barData // これで chart.data の設定は完了
 
-                chart.xAxis.apply {
-                    valueFormatter = IndexAxisValueFormatter(xAxisLabels.toTypedArray())
+                // X軸ラベル配列の安全な取得
+                val labelsArray = if (xAxisLabels.isNotEmpty()) {
+                    xAxisLabels.toTypedArray()
+                } else {
+                    arrayOf()
+                }
+
+                barChart.xAxis.apply {
+                    // X軸ラベルに修正した配列を渡す
+                    valueFormatter = IndexAxisValueFormatter(labelsArray)
                     position = XAxis.XAxisPosition.BOTTOM
                     granularity = 1f
                     labelRotationAngle = -45f
                     setDrawGridLines(false)
                 }
 
-                chart.axisLeft.apply {
+                barChart.axisLeft.apply {
                     axisMinimum = 0f
                     axisMaximum = 10f
 
-                    // 💡 修正点: YAxisValueFormatter ではなく ValueFormatter を継承する
                     valueFormatter = object : ValueFormatter() {
-                        // 必須: getAxisLabel メソッドをオーバーライドする
                         override fun getAxisLabel(value: Float, axis: AxisBase?): String {
-                            // Y軸の単位を設定 (例: 7.5 -> "7.5 h")
                             return String.format(Locale.US, "%.1f h", value)
                         }
                     }
                 }
-                chart.animateX(800)
-                chart.invalidate()
+                barChart.animateY(800) // 棒グラフはY軸アニメーション
+                barChart.invalidate()
             } else {
-                chart.clear()
+                barChart.clear()
             }
         }
     )
