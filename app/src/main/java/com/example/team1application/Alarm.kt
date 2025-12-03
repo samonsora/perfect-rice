@@ -20,10 +20,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment // Alignment のために必要
-
 
 /**
  * 1回分のアラーム設定を保持するデータクラス
@@ -36,25 +37,37 @@ data class AlarmSetting(
 )
 
 //テスト用ダミーデータ
-fun getDummyAlarmSettings(): List<AlarmSetting> {
+fun getDummyAlarmSettings(): SnapshotStateList<AlarmSetting> {
+    // 💡 必須の修正点: toMutableStateList() を使用して、リスト全体を監視対象の状態にする
     return listOf(
         AlarmSetting(1, "06:30", "月, 火, 水, 木, 金", true),
         AlarmSetting(2, "07:00", "土, 日", false),
         AlarmSetting(3, "08:00", "毎日", true)
-    )
+    ).toMutableStateList() // <-- これが非常に重要です
 }
 
 // --- Composable関数 ---
 
 @Composable
 fun AlarmScreen(modifier: Modifier = Modifier) {
-    // 実際にはViewModelなどから取得しますが、ここではダミーデータを使用
-    val allAlarms = getDummyAlarmSettings()
+    // 💡 改善点: アラームリストを mutableStateListOf で保持し、変更を検知可能にする
+    // 実際は親コンポーネント/ViewModelから渡されるべきステートです
+    val allAlarms = remember { getDummyAlarmSettings() }
 
-    // 💡 ステートホイスティングの例: アクティブなアラームのみを表示するかどうかの状態
+    // アクティブなアラームのみを表示するかどうかの状態
     var showOnlyActive by remember { mutableStateOf(false) }
 
-    // フィルタリングロジック (rememberを使用して、showOnlyActiveが変更されたときのみ再計算)
+    // アラームの状態を更新する関数
+    val onToggleActive: (Int, Boolean) -> Unit = { alarmId, newState ->
+        val index = allAlarms.indexOfFirst { it.id == alarmId }
+        if (index != -1) {
+            // リスト内のオブジェクトを変更し、新しいインスタンスで置き換える
+            val oldAlarm = allAlarms[index]
+            allAlarms[index] = oldAlarm.copy(isActive = newState)
+        }
+    }
+
+    // フィルタリングロジック
     val filteredAlarms = remember(showOnlyActive, allAlarms) {
         if (showOnlyActive) {
             allAlarms.filter { it.isActive }
@@ -69,8 +82,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
-        // フィルタリングUIの追加（RirekiScreenの期間選択に相当）
+        // ... (フィルタリングUIは変更なし) ...
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -98,17 +110,14 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f), // 残りのスペースを占有
+                .weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(filteredAlarms, key = { it.id }) { alarm -> // key指定でパフォーマンス向上
-                // 💡 注意: 実際にはonToggleActiveでallAlarmsリスト自体を更新する必要があります
+            items(filteredAlarms, key = { it.id }) { alarm ->
                 AlarmSettingCard(
                     alarm = alarm,
-                    onToggleActive = { newState ->
-                        println("アラーム ID ${alarm.id} の状態が $newState に切り替わりました")
-                        // 実際のアプリでは、ここでViewModelを通じて永続的なデータを更新する
-                    },
+                    // 💡 改善点: IDと新しい状態を渡すコールバックを渡す
+                    onToggleActive = onToggleActive,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -119,7 +128,8 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         // 2. 設定を追加するボタン
         Button(
             onClick = {
-                println("アラーム設定ボタンがクリックされました")
+                // 実際には新規アラーム追加画面への遷移やリストへの追加処理
+                println("新しいアラーム設定がクリックされました")
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -129,32 +139,28 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         }
     }
 }
-
 // --- アラーム設定カードコンポーネント ---
 
 @Composable
 fun AlarmSettingCard(
     alarm: AlarmSetting,
-    onToggleActive: (Boolean) -> Unit,
+    // 💡 改善点: onToggleActiveの引数を (Int, Boolean) -> Unit に変更
+    // 呼び出し側では alarm.id と新しい状態を渡す
+    onToggleActive: (Int, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 💡 修正点: スイッチの状態を親から受け取った状態 (alarm.isActive) にバインド
-    // ここではonToggleActiveが呼ばれた後に親で状態が更新されることを期待します。
-    // ダミーデータのため、ここでは元の実装を維持しますが、本番では不要な場合が多いです。
-    var isChecked by remember { mutableStateOf(alarm.isActive) }
-
     Card(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically // Alignment をインポート
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text(
                     text = alarm.time,
-                    style = MaterialTheme.typography.displaySmall // アラーム時間は大きく表示
+                    style = MaterialTheme.typography.displaySmall
                 )
                 Text(
                     text = alarm.days,
@@ -164,11 +170,12 @@ fun AlarmSettingCard(
             }
 
             // アクティブ/非アクティブを切り替えるスイッチ
-            Switch( // androidx.compose.material3.Switch を Switch に省略
-                checked = isChecked,
-                onCheckedChange = {
-                    isChecked = it // この行を削除し、onToggleActive(it)のみにする方が適切です
-                    onToggleActive(it)
+            Switch(
+                // 💡 改善点: スイッチの状態を親から受け取った状態 (alarm.isActive) にバインド
+                checked = alarm.isActive,
+                onCheckedChange = { newState ->
+                    // 💡 改善点: 親にアラームIDと新しい状態を通知する
+                    onToggleActive(alarm.id, newState)
                 }
             )
         }
