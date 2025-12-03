@@ -29,19 +29,23 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-// 1. 大元のホーム画面
+// 1. これが新しい「大元のホーム画面」！
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
-    val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 1)
+    // 📖 4ページあって、最初は0ページ目からスタート！
+    val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
 
+    // ↔️ 横スワイプの魔法陣
     HorizontalPager(
         state = pagerState,
         modifier = modifier.fillMaxSize()
     ) { page ->
         when (page) {
-            0 -> RirekiScreen() // 👈 左
-            1 -> HomeMainContent() // 🏠 真ん中
-            2 -> ClockScreen() // 👉 右
+            0 -> HomeMainContent() // ホーム画面
+            1 -> AlarmScreen() // アラーム設定画面
+            2 -> RirekiScreen() // 履歴表示画面
+            3 -> ClockScreen() // 現在時刻表示画面
+             //
         }
     }
 }
