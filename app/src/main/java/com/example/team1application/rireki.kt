@@ -177,6 +177,7 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
             barEntries = barEntries, // 加工済みのデータ
             xAxisLabels = xAxisLabels, // X軸ラベル
             graphType = selectedGraphType, // 選択された GraphType を渡す
+            graphTypeKey = selectedGraphType.label,
             modifier = Modifier.height(300.dp)
         )
 
@@ -222,22 +223,27 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
 @Composable
 fun CustomBarChart(
     barEntries: List<BarEntry>, // ★ BarEntryのリストを受け取る
-    xAxisLabels: List<String>, // ★ X軸ラベルを受け取る
+    xAxisLabels: List<String>, //日付を取得する
     graphType: GraphType,      // ★ GraphTypeを受け取る
+    graphTypeKey: String,
     modifier: Modifier = Modifier
 ) {
+    // グラフインスタンスへの参照を保持 (LaunchedEffectからアクセスするため)
+    val chartRef = remember { mutableStateOf<BarChart?>(null) }
+
     AndroidView(
         modifier = modifier.fillMaxWidth().height(300.dp),
         factory = { context ->
             // BarChart を使用
             BarChart(context).apply {
                 description.isEnabled = false
-                isDragEnabled = true
+                isDragEnabled = false
                 axisRight.isEnabled = false
-                setScaleEnabled(true) // ズーム有効
+                setScaleEnabled(false) // ズーム無効
                 isHighlightPerTapEnabled = true // ハイライト有効
                 legend.horizontalAlignment = Legend.LegendHorizontalAlignment.RIGHT
                 setBackgroundColor(Color.WHITE) // 背景を白に設定
+                chartRef.value = this // ★ インスタンスを保持
             }
         },
         update = { chart ->
@@ -289,7 +295,7 @@ fun CustomBarChart(
                         }
                     }
                 }
-                barChart.animateY(800)
+                // barChart.animateY(800) <--- UPDATEブロックから削除
                 barChart.notifyDataSetChanged()
                 barChart.invalidate()
             } else {
@@ -297,7 +303,19 @@ fun CustomBarChart(
             }
         }
     )
+
+    // ★ LaunchedEffectでアニメーションを制御 ★
+    // graphTypeKey（項目名）が変わったとき、または初回表示時に実行される
+    LaunchedEffect(graphTypeKey) {
+        chartRef.value?.apply {
+            // データが存在することを確認してからアニメーションを実行
+            if (data != null && data.entryCount > 0) {
+                animateY(800)
+            }
+        }
+    }
 }
+
 
 // --- 期間選択ボタン ---
 
