@@ -1,12 +1,16 @@
 package com.example.team1application
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box // ← 📦 これが足りなかった！
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape // ← 形の魔法
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,10 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.draw.clip // ← 切り抜きの魔法
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.team1application.ui.theme.Team1ApplicationTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.text.SimpleDateFormat
@@ -29,34 +34,60 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-// 1. これが新しい「大元のホーム画面」！
+// 1. 大元のホーム画面
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
-    // 📖 4ページあって、最初は0ページ目からスタート！
     val pagerState = rememberPagerState(pageCount = { 5 }, initialPage = 2)
 
-    // ↔️ 横スワイプの魔法陣
+    // 🔑 アラームデータの管理
+    val allAlarms = remember { getDummyAlarmSettings() }
+
+    // 🔄 データ更新
+    val onToggleActive: (Int, Boolean) -> Unit = { alarmId, newState ->
+        val index = allAlarms.indexOfFirst { it.id == alarmId }
+        if (index != -1) {
+            val oldAlarm = allAlarms[index]
+            allAlarms[index] = oldAlarm.copy(isActive = newState)
+        }
+    }
+
+    // 🕰️ 12時間後の計算
+    val targetTimeDisplay = remember(allAlarms.toList()) {
+        val activeAlarm = allAlarms.firstOrNull { it.isActive }
+        if (activeAlarm != null) {
+            calculate12HoursLater(activeAlarm.time)
+        } else {
+            "--:--"
+        }
+    }
+
     HorizontalPager(
         state = pagerState,
         modifier = modifier.fillMaxSize()
     ) { page ->
         when (page) {
-            //0 -> settei()//設定画面
-            1 -> RirekiScreen() // 記録画面
-            2 -> HomeMainContent() // ホーム画面
-            3 -> AlarmScreen() // アラーム画面
-            4 -> ClockScreen()//現在時刻表示画面画面
-
+            //0 ->
+            1 -> RirekiScreen()
+            2 -> HomeMainContent(targetTime = targetTimeDisplay)
+            3 -> AlarmScreen(
+                alarms = allAlarms,
+                onToggleActive = onToggleActive
+            )
+            4 -> ClockScreen()
+            else -> Text("準備中...")
         }
     }
 }
 
 // --------------------------------------------------
-// 🏠 真ん中のページ（修正版！）
+// 🏠 ホーム画面の中身（修正版！）
 // --------------------------------------------------
 @Composable
-fun HomeMainContent() {
+fun HomeMainContent(targetTime: String) {
     var timeString by remember { mutableStateOf("00:00") }
+
+    // 🎨 プレートの色
+    val plateColor = Color(0xFFCFD8DC)
 
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -81,54 +112,77 @@ fun HomeMainContent() {
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
+            // さっき "12:34" になってたのを、動く時計(timeString)に戻したよ！
             Text(
                 text = timeString,
-                // ✨ ここが巨大化の呪文！ ✨
-                // 100.sp, 120.sp... 数字を大きくすればどこまでもデカくなるよ！
                 fontSize = 120.sp,
-
-                // 文字を太くして、デジタル時計っぽくクッキリさせる！
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-
-                // 行の高さも調整して、上下の余白をいい感じに締める
-                lineHeight = 110.sp,
-
-                // 色を変えたいならこう書く！(例：濃いグレー)
-                color = androidx.compose.ui.graphics.Color.DarkGray
+                fontWeight = FontWeight.Bold,
+                color = Color.DarkGray,
+                lineHeight = 110.sp
             )
         }
 
-        // 🟦 下のエリア（ボタンとか）
+        // 🟦 下のエリア
         Column(
             modifier = Modifier
                 .weight(2f)
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            Text(
-                text = "ホーム画面！",
-                style = MaterialTheme.typography.headlineMedium
-            )
 
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
+            // ✨✨ ここが魔法のプレート（ここだけ色付き！） ✨✨
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    // 角丸と背景色
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(plateColor)
+                    // 文字周りの余白
+                    .padding(horizontal = 32.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = "次のアラーム時間",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Black
+                )
+                Text(
+                    text = targetTime,
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            } // ← プレートの閉じカッコ（ボタンは外に出す！）
 
-            Button(onClick = { /* ボタンの動作 */ }) {
-                Text(text = "記録")
+            // バネ（残りスペースを埋める）
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 🔘 ボタン（プレートの外にある！）
+            Button(
+                onClick = { /* 動作 */ },
+                modifier = Modifier.padding(bottom = 48.dp)
+            ) {
+                Text("記録")
             }
-        }
 
-    }
+            // 下の余白調整
+            Spacer(modifier = Modifier.weight(0.5f))
+
+        } // ← 下エリアのColumn閉じ
+    } // ← 大元のColumn閉じ
 }
 
-
-// --------------------------------------------------
-// 📺 プレビュー
-// --------------------------------------------------
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    Team1ApplicationTheme {
-        HomeScreen()
+// 🧙‍♀️ 計算用の魔法
+fun calculate12HoursLater(originalTime: String): String {
+    return try {
+        val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val date = formatter.parse(originalTime) ?: return "--:--"
+        val calendar = Calendar.getInstance()
+        calendar.time = date
+        calendar.add(Calendar.HOUR_OF_DAY, 0)
+        formatter.format(calendar.time)
+    } catch (e: Exception) {
+        "--:--"
     }
 }

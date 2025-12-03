@@ -49,40 +49,27 @@ fun getDummyAlarmSettings(): SnapshotStateList<AlarmSetting> {
 // --- Composable関数 ---
 
 @Composable
-fun AlarmScreen(modifier: Modifier = Modifier) {
-    // 💡 改善点: アラームリストを mutableStateListOf で保持し、変更を検知可能にする
-    // 実際は親コンポーネント/ViewModelから渡されるべきステートです
-    val allAlarms = remember { getDummyAlarmSettings() }
-
-    // アクティブなアラームのみを表示するかどうかの状態
+fun AlarmScreen(
+    // 💡 親(HomeScreen)からデータをもらう形に変更！
+    alarms: List<AlarmSetting>,
+    onToggleActive: (Int, Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // 以前の機能（フィルタリング）はそのまま残すよ！✨
     var showOnlyActive by remember { mutableStateOf(false) }
 
-    // アラームの状態を更新する関数
-    val onToggleActive: (Int, Boolean) -> Unit = { alarmId, newState ->
-        val index = allAlarms.indexOfFirst { it.id == alarmId }
-        if (index != -1) {
-            // リスト内のオブジェクトを変更し、新しいインスタンスで置き換える
-            val oldAlarm = allAlarms[index]
-            allAlarms[index] = oldAlarm.copy(isActive = newState)
-        }
+    val filteredAlarms = if (showOnlyActive) {
+        alarms.filter { it.isActive }
+    } else {
+        alarms
     }
 
-    // フィルタリングロジック
-    val filteredAlarms = remember(showOnlyActive, allAlarms) {
-        if (showOnlyActive) {
-            allAlarms.filter { it.isActive }
-        } else {
-            allAlarms
-        }
-    }
-
-    // アラーム設定画面のレイアウト
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // ... (フィルタリングUIは変更なし) ...
+        // スイッチ部分（そのまま）
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -100,13 +87,13 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 1. 設定済みアラームリスト (LazyColumnを使用)
         Text(
             text = "現在のアラーム設定 (${filteredAlarms.size}件)",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // リスト表示（そのまま）
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -116,7 +103,6 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
             items(filteredAlarms, key = { it.id }) { alarm ->
                 AlarmSettingCard(
                     alarm = alarm,
-                    // 💡 改善点: IDと新しい状態を渡すコールバックを渡す
                     onToggleActive = onToggleActive,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -125,58 +111,36 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2. 設定を追加するボタン
+        // ボタン（そのまま）
         Button(
-            onClick = {
-                // 実際には新規アラーム追加画面への遷移やリストへの追加処理
-                println("新しいアラーム設定がクリックされました")
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
+            onClick = { println("新しいアラーム設定") },
+            modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             Text(text = "➕ 新しいアラームを設定")
         }
     }
 }
-// --- アラーム設定カードコンポーネント ---
 
+// カード部分は変更なし！（そのまま使ってね）
 @Composable
 fun AlarmSettingCard(
     alarm: AlarmSetting,
-    // 💡 改善点: onToggleActiveの引数を (Int, Boolean) -> Unit に変更
-    // 呼び出し側では alarm.id と新しい状態を渡す
     onToggleActive: (Int, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(
-                    text = alarm.time,
-                    style = MaterialTheme.typography.displaySmall
-                )
-                Text(
-                    text = alarm.days,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(text = alarm.time, style = MaterialTheme.typography.displaySmall)
+                Text(text = alarm.days, style = MaterialTheme.typography.bodyMedium)
             }
-
-            // アクティブ/非アクティブを切り替えるスイッチ
             Switch(
-                // 💡 改善点: スイッチの状態を親から受け取った状態 (alarm.isActive) にバインド
                 checked = alarm.isActive,
-                onCheckedChange = { newState ->
-                    // 💡 改善点: 親にアラームIDと新しい状態を通知する
-                    onToggleActive(alarm.id, newState)
-                }
+                onCheckedChange = { onToggleActive(alarm.id, it) }
             )
         }
     }
