@@ -68,7 +68,7 @@ fun TitleScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "　生活習慣\nリペアキット",
+                text = "　生活習慣　\nリペアキット",
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
