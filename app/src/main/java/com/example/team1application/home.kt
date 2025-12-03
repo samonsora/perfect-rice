@@ -33,7 +33,7 @@ import java.util.TimeZone
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     // 📖 4ページあって、最初は0ページ目からスタート！
-    val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
+    val pagerState = rememberPagerState(pageCount = { 5 }, initialPage = 2)
 
     // ↔️ 横スワイプの魔法陣
     HorizontalPager(
@@ -41,11 +41,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize()
     ) { page ->
         when (page) {
-            0 -> HomeMainContent() // ホーム画面
-            1 -> AlarmScreen() // アラーム設定画面
-            2 -> RirekiScreen() // 履歴表示画面
-            3 -> ClockScreen() // 現在時刻表示画面
-             //
+            //0 -> settei()//設定画面
+            1 -> RirekiScreen() // 記録画面
+            2 -> HomeMainContent() // ホーム画面
+            3 -> AlarmScreen() // アラーム画面
+            4 -> ClockScreen()//現在時刻表示画面画面
+
         }
     }
 }
