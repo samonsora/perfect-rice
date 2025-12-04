@@ -34,13 +34,13 @@ fun TitleScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val mediaPlayer = try { MediaPlayer.create(context, R.raw.tap_sound) } catch (e: Exception) { null }
+
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .clickable {
-                mediaPlayer?.start()
+
                 scope.launch {
                     delay(300)
                     onTap()
