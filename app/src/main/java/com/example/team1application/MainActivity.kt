@@ -76,26 +76,3 @@ class MainActivity : ComponentActivity() {
 
 
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Team1ApplicationTheme {
-
-        Greeting("Android")
-
-        // プレビューでは固定の時刻（例: 10時10分30秒）で描画
-        val myClock = Clock()
-        val fixedAngles = myClock.calculateHandAngles(10, 10, 30)
-
-        Column {
-            GreetingContent(Modifier.padding(16.dp))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "プレビュー用固定表示:", modifier = Modifier.padding(horizontal = 16.dp))
-            ClockDisplay(modifier = Modifier.size(200.dp), handAngles = fixedAngles)
-        }
-    }
-}
