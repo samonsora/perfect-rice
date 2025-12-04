@@ -49,7 +49,7 @@ fun TitleScreen(
     ) {
         // 🖼️ 背景画像：ここがポイント！
         Image(
-            painter = painterResource(id = R.drawable.mikaduki),
+            painter = painterResource(id = R.drawable.kakasi),
             contentDescription = "背景画像",
             // 親(Box)いっぱいに広げる
             modifier = Modifier.fillMaxSize(),
