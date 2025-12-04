@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
                         animationSpec = tween(durationMillis = 700)
                     ) { isShowingTitle ->
 
-                        // ここで中身を出し分けるの！
+                        //                        // ここで中身を出し分けるの！
                         if (isShowingTitle) {
                             TitleScreen(
                                 onTap = { isTitle = false },

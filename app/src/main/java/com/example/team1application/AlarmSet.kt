@@ -128,7 +128,6 @@ fun AlarmSetupDialog(
                             val colonIndex = 2
 
                             // 1. 全角数字を半角に変換し、数字とコロンのみを抽出
-                            // cleanInput は未使用のため削除。フィルタリングと変換は newText で行う
                             val filteredNewText = newText
                                 .replace(Regex("[０-９]")) {
                                     (it.value[0].code - '０'.code + '0'.code).toChar().toString()
@@ -139,16 +138,8 @@ fun AlarmSetupDialog(
                             val isDeletion = filteredNewText.length < currentText.length
                             val isInsertion = filteredNewText.length > currentText.length
 
-                            // 挿入された文字の特定
+                            // 挿入された文字の特定 (同一数字の入力問題を解消したロジック)
                             val charInput: Char? = if (isInsertion && filteredNewText.length == currentText.length + 1) {
-                                // 修正: 挿入が単一文字であると仮定し、新しいテキストから古いテキストの文字を削除した残りの文字を挿入文字とする。
-                                // 例: "07:30" -> "07:340" (filteredNewText)
-                                // 07:30: currentText
-
-                                // ただし、この方法ではコロン(:)が入力された後に次の文字を入力すると、
-                                // "07:3:4"のようになり、filteredNewTextにコロンが含まれているとロジックが破綻する。
-
-                                // 最も安定したロジック:
                                 // 1. currentTextの文字を新しいテキストから一旦全て取り除く
                                 var remaining = filteredNewText
                                 currentText.forEach { c -> remaining = remaining.replaceFirst(c.toString(), "") }
@@ -164,8 +155,9 @@ fun AlarmSetupDialog(
                             // 3. 最終的な hh:mm 形式の文字列を生成
                             var hh = currentText.substring(0, 2)
                             var mm = currentText.substring(3, 5)
-                            var nextText: String = currentText
-                            var nextCursor = oldCursor
+                            // 警告解消のため、初期値設定を削除
+                            var nextText: String
+                            var nextCursor: Int
 
                             if (isDeletion) {
                                 // --- 削除ロジック (Backspace) ---
@@ -219,6 +211,7 @@ fun AlarmSetupDialog(
                                 nextText = "$hh:$mm"
                             } else {
                                 // --- その他の変更 (カーソル移動など) ---
+                                // 警告を解消するため、このブロックを必須とする
                                 nextText = currentText
                                 nextCursor = newCursor.coerceIn(0, 5) // カーソル位置を 0-5 に制限
                             }
