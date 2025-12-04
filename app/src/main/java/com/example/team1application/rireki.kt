@@ -1,6 +1,8 @@
 package com.example.team1application
 
 // 必要なインポートをすべて追加
+import android.R.attr.fillColor
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +28,7 @@ import com.github.mikephil.charting.components.AxisBase
 
 
 // --- データ構造とヘルパー関数 ---
+
 
 /**
  * 1回分の睡眠記録を保持するデータクラス
@@ -316,6 +319,21 @@ fun CustomBarChart(
     }
 }
 
+
+@Composable
+fun LineDataSet(x0: List<Unit>, x1: String) {
+    TODO("Not yet implemented")
+}
+
+@Composable
+fun LineChart(x0: Context) {
+    TODO("Not yet implemented")
+}
+
+@Composable
+fun Entry(x0: Float, x1: Float) {
+    TODO("Not yet implemented")
+}
 
 // --- 期間選択ボタン ---
 

@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.preference)
     implementation(libs.material)
+    implementation(libs.appcompat)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

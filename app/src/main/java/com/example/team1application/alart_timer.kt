@@ -62,7 +62,7 @@ fun CurrentTimeDisplay(modifier: Modifier = Modifier) {
     ) {
 
         // ★ 1. アナログ時計の配置 (画面上部に約40%のスペースを占めさせる)
-        AnalogClock(
+        ClockScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp) // 高さを固定してアナログ時計にスペースを与える
@@ -71,6 +71,7 @@ fun CurrentTimeDisplay(modifier: Modifier = Modifier) {
         )
 
         // 現在時刻を表示するTextコンポーザブル
+        /*
         Text(
             text = "現在時刻",
             fontSize = 24.sp,
@@ -85,7 +86,7 @@ fun CurrentTimeDisplay(modifier: Modifier = Modifier) {
             // テキストを中央揃えにするためにTextAlign.Centerを使用するのが一般的ですが、
             // Boxの中央配置だけでも画面中央には表示されます。
         )
-
+        */
         // ★ 左下ボタン (ストップ)
         Button(
             onClick = { /* ストップボタンがクリックされた時の処理 */ },

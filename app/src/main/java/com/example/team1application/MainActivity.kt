@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import java.time.Clock
 
 
 class MainActivity : ComponentActivity() {
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     // 🪄 魔法のスイッチ
                     var isTitle by remember { mutableStateOf(true) }
+
 
                     // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
                     Crossfade(
@@ -68,27 +70,6 @@ class MainActivity : ComponentActivity() {
 }
 
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
 
-}
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Team1ApplicationTheme {
 
-        Greeting("Android")
-
-        // プレビューでは固定の時刻（例: 10時10分30秒）で描画
-        val myClock = Clock()
-        val fixedAngles = myClock.calculateHandAngles(10, 10, 30)
-
-        Column {
-            GreetingContent(Modifier.padding(16.dp))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "プレビュー用固定表示:", modifier = Modifier.padding(horizontal = 16.dp))
-            ClockDisplay(modifier = Modifier.size(200.dp), handAngles = fixedAngles)
-        }
-    }
-}
