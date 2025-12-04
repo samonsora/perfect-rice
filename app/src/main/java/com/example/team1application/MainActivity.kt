@@ -1,6 +1,8 @@
 package com.example.team1application
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,38 +24,68 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 
+
 class MainActivity : ComponentActivity() {
+
+    private var currentTextSize: Float = 16f   // ← 元の変数そのまま
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
+
         setContent {
-            // コンフリクト激戦区
+            // ★ コンフリクト激戦区（元コメント）
             Team1ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var isTitle by remember { mutableStateOf(true) }
 
                     if (isTitle) {
-
-                      TitleScreen(onTap = { isTitle = false },
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                        // タイトル画面（元コメント）
+                        TitleScreen(
+                            onTap = { isTitle = false },
+                            modifier = Modifier.padding(innerPadding)
+                        )
                     } else {
-                        // ■ スイッチがOFFになったら、こっち（ホーム）を表示！
+                        //  スイッチがOFFになったら、こっち（ホーム）を表示！（元コメント）
                         HomeScreen(
                             modifier = Modifier.padding(innerPadding)
                         )
                     }
-
-
                 }
             }
         }
     }
+
+    // Compose + ComponentActivity でもメニューを使えるように修正
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.settings, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+
+            R.id.menu_text_size -> {
+                changeTextSize()
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun changeTextSize() {
+        // TODO: Not yet implemented
+    }
+
 }
+
+
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
-
 }
 
 @Preview(showBackground = true)
@@ -63,7 +95,7 @@ fun GreetingPreview() {
 
         Greeting("Android")
 
-        // プレビューでは固定の時刻（例: 10時10分30秒）で描画
+        // プレビューでは固定の時刻（例: 10時10分30秒）で描画（元コメント）
         val myClock = Clock()
         val fixedAngles = myClock.calculateHandAngles(10, 10, 30)
 
