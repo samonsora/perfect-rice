@@ -29,9 +29,11 @@ import com.github.mikephil.charting.components.AxisBase
 //        Column(modifier = Modifier.padding(16.dp)) {
 //            Text(text = " ${record.date}", style = MaterialTheme.typography.titleMedium)
 //            Spacer(Modifier.height(4.dp))
-//            Text(text = "睡眠時間: ${record.sleepTime}", style = MaterialTheme.typography.bodyLarge)
-//            Text(text = "就寝時間: ${record.bedtime}")
-//            Text(text = "起床時間: ${record.wakeUpTime}")
+//            Text(text = "朝食時間: ${record.sleepTime}", style = MaterialTheme.typography.bodyLarge)
+//            Text(text = "昼食時間: ${record.bedtime}")
+//            Text(text = "夕食時間: ${record.wakeUpTime}")
+//            Text(text = "間食時間: ${record.wakeUpTime}")
+//            Text(text = "夜食時間: ${record.wakeUpTime}")
 //            Text(text = "スヌーズ回数: ${record.snoozeCount}回")
 //            Text(text = "スヌーズ合計時間: ${record.snoozeDuration}")
 //        }
