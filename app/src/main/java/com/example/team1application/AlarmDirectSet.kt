@@ -26,16 +26,14 @@ fun AlarmTimeDirectInput(
     timeError: String?,
     onTimeChange: (TextFieldValue) -> Unit
 ) {
-    // 既存の直接入力ロジックを移植
-    val colonIndex = 2
-
     OutlinedTextField(
         value = timeInput,
         onValueChange = { v ->
-            val currentText = timeInput.text // 変更前のテキスト ("HH:MM")
+            val currentText = timeInput.text // 変更前のテキスト
             val newText = v.text // 変更後のテキスト
             val oldCursor = timeInput.selection.start // 変更前のカーソル位置
             val newCursor = v.selection.start // 変更後の意図されたカーソル位置
+            val colonIndex = 2
 
             println(newText)
 
@@ -45,7 +43,6 @@ fun AlarmTimeDirectInput(
                     (it.value[0].code - '０'.code + '0'.code).toChar().toString()
                 }
                 .filter { it.isDigit() || it == ':' }
-                .take(5) // 長さを5に制限
 
             println(filteredNewText)
 
@@ -53,7 +50,7 @@ fun AlarmTimeDirectInput(
             val isDeletion = filteredNewText.length < currentText.length
             val isInsertion = filteredNewText.length > currentText.length
 
-            // 挿入された文字の特定
+            // 挿入された文字の特定 (同一数字の入力問題を解消したロジック)
             val charInput: Char? = if (isInsertion && filteredNewText.length == currentText.length + 1) {
                 // 1. currentTextの文字を新しいテキストから一旦全て取り除く
                 var remaining = filteredNewText
@@ -68,27 +65,31 @@ fun AlarmTimeDirectInput(
             } else null
 
             // 3. 最終的な hh:mm 形式の文字列を生成
-            var hh = if (currentText.length >= 2) currentText.substring(0, 2) else "00"
-            var mm = if (currentText.length >= 5) currentText.substring(3, 5) else "00"
+            var hh = currentText.substring(0, 2)
+            var mm = currentText.substring(3, 5)
+            // 警告解消のため、初期値設定を削除
             var nextText: String
             var nextCursor: Int
 
             if (isDeletion) {
-                // 削除ロジック（変更なし）
+                // --- 削除ロジック (Backspace) ---
                 val delIndex = oldCursor - 1 // 削除対象のインデックス
 
                 nextCursor = when (delIndex) {
                     colonIndex -> {
+                        // ルール: コロンの削除は受け付けず、コロンの一つ左側の数字（h2）がクリアされる
                         hh = hh.replaceRange(1, 2, '0'.toString())
-                        colonIndex - 1
+                        colonIndex - 1 // カーソルを位置2へ移動
                     }
                     in 0..1 -> {
+                        // 時(hh)の削除: 左側の数字をクリア
                         hh = hh.replaceRange(delIndex, delIndex + 1, '0'.toString())
-                        delIndex
+                        delIndex // カーソルを左へ移動
                     }
                     in 3..4 -> {
+                        // 分(mm)の削除: 左側の数字をクリア
                         mm = mm.replaceRange(delIndex - 3, delIndex - 2, '0'.toString())
-                        delIndex
+                        delIndex // カーソルを左へ移動
                     }
                     else -> oldCursor
                 }
@@ -98,50 +99,36 @@ fun AlarmTimeDirectInput(
                 // --- 数字入力ロジック (上書き) ---
                 val insIndex = oldCursor // 上書き対象のインデックス (カーソル位置)
 
-                // コロンの位置は、入力された数字で上書きせずにスキップする。
-                // ただし、コロンの位置にいる場合は分に移動させる。
-                if (insIndex == colonIndex) {
-                    nextText = currentText // テキストは変更しない
-                    nextCursor = insIndex + 1 // カーソルを次の数字の位置へ強制移動
-                }
-                // カーソル位置の文字が数字であり、かつそれが '0' である場合にのみ上書きする
-                else if (insIndex in 0..4 && currentText.getOrNull(insIndex) == '0') {
-                    when (insIndex) {
-                        in 0..1 -> {
-                            // 時(hh)の上書き
-                            hh = hh.replaceRange(insIndex, insIndex + 1, charInput.toString())
-                            nextCursor = insIndex + 1
-                        }
-                        in 3..4 -> {
-                            // 分(mm)の上書き
-                            mm = mm.replaceRange(insIndex - 3, insIndex - 2, charInput.toString())
-                            nextCursor = insIndex + 1
-                        }
-                        else -> { // これは insIndex == 2 のコロンの位置を処理する場所ですが、上ですでに処理されています。
-                            nextCursor = oldCursor
-                        }
+                nextCursor = when (insIndex) {
+                    colonIndex -> {
+                        // コロンの位置(2)では、分の十の位(mm[0] = global index 3)を上書きし、
+                        // カーソルを3へスキップ
+                        mm = mm.replaceRange(0, 1, charInput.toString()) // mmのインデックス0を置換
+                        colonIndex + 2 // カーソルを4へ
                     }
-                    nextText = "$hh:$mm"
-                } else {
-                    // カーソル位置の文字が '0' ではない場合、または範囲外の場合、入力を無視しカーソルのみを移動させる
-                    nextText = currentText
-                    nextCursor = insIndex + 1 // カーソルを1つ右に移動させる（標準的な入力動作を模倣）
-                    if (nextCursor == colonIndex) {
-                        nextCursor++ // コロンをスキップ
+                    in 0..1 -> {
+                        // 時(hh)の上書き
+                        hh = hh.replaceRange(insIndex, insIndex + 1, charInput.toString())
+                        insIndex + 1
                     }
+                    in 3..4 -> {
+                        // 分(mm)の上書き
+                        // insIndex 3 -> mmインデックス 0 を置換
+                        // insIndex 4 -> mmインデックス 1 を置換
+                        mm = mm.replaceRange(insIndex - 3, insIndex - 2, charInput.toString())
+                        insIndex + 1
+                    }
+                    else -> oldCursor // 位置5またはその他の例外は無視
                 }
-
-                // カーソル位置の最終調整 (最大5を超えないように)
-                nextCursor = nextCursor.coerceIn(0, 5)
-
-
+                nextText = "$hh:$mm"
             } else {
                 // --- その他の変更 (カーソル移動など) ---
+                // 警告を解消するため、このブロックを必須とする
                 nextText = currentText
                 nextCursor = newCursor.coerceIn(0, 5) // カーソル位置を 0-5 に制限
             }
 
-            // 4. 最終的なステートの更新を親コンポーネントに通知
+            // 4. 最終的なステートの更新
             onTimeChange(
                 TextFieldValue(
                     text = nextText,
@@ -153,7 +140,7 @@ fun AlarmTimeDirectInput(
         isError = timeError != null && timeInput.text.length == 5,
         supportingText = {
             if (timeInput.text.length == 5 && timeError != null) {
-                Text(text = timeError!!, color = MaterialTheme.colorScheme.error)
+                Text(text = timeError, color = MaterialTheme.colorScheme.error)
             } else {
                 Text("24時間表記 (HH:mm) - 自動でhh:mm形式を維持")
             }
