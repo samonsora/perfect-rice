@@ -61,14 +61,17 @@ object AlarmDataStore { // objectでシングルトンとして定義
             // JSON文字列をList<AlarmSetting>にデコード
             val alarms = json.decodeFromString<List<AlarmSetting>>(jsonString)
             println("✅ アラーム設定をファイルから読み込みました (${alarms.size}件)")
+            // alarmsを返す。
             alarms
         } catch (e: IOException) {
             println("❌ ファイル読み込みエラー: ${e.message}")
             e.printStackTrace()
+            // listを返す。
             createInitialDummyData()
         } catch (e: Exception) {
             println("❌ JSONデコードエラー: ${e.message}")
             e.printStackTrace()
+            // listを返す。
             createInitialDummyData()
         }
     }
