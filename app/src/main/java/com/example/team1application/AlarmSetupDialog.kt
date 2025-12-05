@@ -26,6 +26,7 @@ import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 
 /**
  * ユーザーが新しいアラームを設定するためのダイアログUI
@@ -37,13 +38,25 @@ fun AlarmSetupDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val defaultTimeString = remember { timeFormat.format(Calendar.getInstance().time) }
+    val jstTimeZone = remember { TimeZone.getTimeZone("Asia/Tokyo") }
+    val timeFormat = remember {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
+            // ★ timeFormat に JST を設定
+            timeZone = jstTimeZone
+        }
+    }
+
+    val defaultTimeString = remember {
+        // ★ Calendar に JST を設定し、その時刻をフォーマット
+        val calendar = Calendar.getInstance(jstTimeZone)
+        timeFormat.format(calendar.time)
+    }
 
     // timeInputの初期値を、現在の時刻を hh:mm 形式で取得し、カーソルを末尾に設定
     var timeInput by remember {
         mutableStateOf(TextFieldValue(defaultTimeString, selection = TextRange(defaultTimeString.length)))
     }
+    println(timeInput)
     var timeError by remember { mutableStateOf<String?>(null) }
     var previousTimeInput by remember { mutableStateOf(timeInput) }
     var isDirectInputMode by remember { mutableStateOf(false) }
@@ -51,7 +64,9 @@ fun AlarmSetupDialog(
     // 時刻のバリデーションロジック
     val isValidTime = remember(timeInput.text) {
         val parser = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
-            isLenient = false // 厳密なチェックを有効にする
+            isLenient = false
+            // ★ バリデーションパーサーにも JST を設定
+            timeZone = jstTimeZone
         }
         val text = timeInput.text
         try {

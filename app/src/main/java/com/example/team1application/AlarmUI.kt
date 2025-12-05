@@ -8,15 +8,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width // 💡 追加: Spacerでwidthを使うため
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons // 💡 追加: Icons.Filled.Deleteを使うため
-import androidx.compose.material.icons.filled.Delete // 💡 追加: ゴミ箱アイコンを使うため
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon // 💡 追加: Iconコンポーネントを使うため
-import androidx.compose.material3.IconButton // 💡 追加: IconButtonコンポーネントを使うため
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 // 💡 AlarmSetting データクラスは AlarmData.kt に移動しました。
-
+// 💡 各種データ操作関数 (AlarmDataStore, deleteAlarmAndSave など) は外部ファイルにある前提です。
 
 // --- Composable関数 ---
 
@@ -42,12 +42,13 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
     // 2. 初期データをファイルから読み込む
+    // rememberで保持し、再コンポー図時にロードが走らないようにする
     val initialAlarms = remember {
         // データを読み込み、MutableStateListに変換してステートとして保持する
         AlarmDataStore.loadAlarms(context).toMutableStateList()
     }
-    val allAlarms = remember { initialAlarms }
-
+    // initialAlarms 自体が MutableStateList なので、これを直接操作・参照する
+    val allAlarms = initialAlarms
 
     var showOnlyActive by remember { mutableStateOf(false) }
     // 💡 追加: アラーム設定画面（ダイアログ）の表示状態
@@ -62,7 +63,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
             allAlarms[index] = oldAlarm.copy(isActive = newState)
 
             // 💡 変更をファイルに永続化 (保存) する
-            AlarmDataStore.saveAlarms(context, allAlarms) // 保存処理を再度有効化
+            AlarmDataStore.saveAlarms(context, allAlarms)
         }
     }
 
@@ -77,16 +78,14 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         // AlarmData.kt で定義された追加＆保存ロジックを呼び出す
         addNewAlarmAndSave(context, allAlarms, selectedTime)
         showSetupDialog = false // ダイアログを閉じる
-        println("新しいアラーム設定が追加され、保存されました: $selectedTime")
     }
 
     // フィルタリングロジック
-    val filteredAlarms = remember(showOnlyActive, allAlarms) {
-        if (showOnlyActive) {
-            allAlarms.filter { it.isActive }
-        } else {
-            allAlarms
-        }
+    // showOnlyActive または allAlarms (の中身) が変わったときに再計算
+    val filteredAlarms = if (showOnlyActive) {
+        allAlarms.filter { it.isActive }
+    } else {
+        allAlarms
     }
 
     // 💡 アラーム設定ダイアログの表示
@@ -104,7 +103,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // ... (フィルタリングUI) ...
+        // フィルタリングスイッチ
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -122,24 +121,24 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 1. 設定済みアラームリスト
+        // 1. 設定済みアラームリストヘッダー
         Text(
             text = "現在のアラーム設定 (${filteredAlarms.size}件)",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // リスト表示
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(filteredAlarms, key = { it.id }) { alarm ->
+            items(items = filteredAlarms, key = { it.id }) { alarm ->
                 AlarmSettingCard(
                     alarm = alarm,
                     onToggleActive = onToggleActive,
-                    // 🚨 修正: onDeleteAlarm を渡す
                     onDeleteAlarm = onDeleteAlarm,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -162,7 +161,8 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         }
     }
 }
-// --- アラーム設定カードコンポーネント (レイアウト修正) ---
+
+// --- アラーム設定カードコンポーネント ---
 
 @Composable
 fun AlarmSettingCard(
@@ -179,7 +179,7 @@ fun AlarmSettingCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 💡 修正: 左側の情報 (時刻と曜日) の表示を戻す
+            // 左側の情報 (時刻と曜日)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = alarm.time,
@@ -197,12 +197,12 @@ fun AlarmSettingCard(
                 // 💡 削除ボタン
                 IconButton(onClick = { onDeleteAlarm(alarm.id) }) {
                     Icon(
-                        imageVector = Icons.Filled.Delete,
+                        imageVector = Icons.Filled.Delete, // ここで依存関係が必要になります
                         contentDescription = "アラームを削除",
-                        tint = MaterialTheme.colorScheme.error // 削除ボタンはエラー色に
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp)) // スペーサーで間隔調整
+                Spacer(modifier = Modifier.width(8.dp))
 
                 // アクティブ/非アクティブを切り替えるスイッチ
                 Switch(
