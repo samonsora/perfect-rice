@@ -91,7 +91,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 
     // 💡 アラーム設定ダイアログの表示
     if (showSetupDialog) {
-        // AlarmSet.kt で定義する Composable を呼び出す
+        // AlarmStandardSet.kt で定義する Composable を呼び出す
         AlarmSetupDialog(
             onDismiss = { showSetupDialog = false },
             onSave = onNewAlarmSet
