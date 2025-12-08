@@ -37,7 +37,7 @@ fun GetupTimeDisplay(modifier: Modifier = Modifier) {
     ) {
 
         // ★ 1. アナログ時計の配置 (画面上部に約40%のスペースを占めさせる)
-        AnalogClock(
+        ClockScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp) // 高さを固定してアナログ時計にスペースを与える
