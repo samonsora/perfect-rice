@@ -1,9 +1,6 @@
 package com.example.team1application
 
-import android.media.MediaPlayer
 import android.os.Bundle
-import android.view.GestureDetector // ← 動きを見極める魔法
-import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,45 +16,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 
+
 class MainActivity : ComponentActivity() {
-
-    // 🎵 音を鳴らすプレイヤー
-    private var globalMediaPlayer: MediaPlayer? = null
-
-    // 🦅 動きを見極める使い魔（ジェスチャー検出器）
-    private lateinit var gestureDetector: GestureDetector
-
+    //  今後このoncleate多分消えてなくなるからどっかに避難
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // 🎵 音の準備
-        try {
-            globalMediaPlayer = MediaPlayer.create(this, R.raw.tap_sound)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        // 🦅 使い魔を召喚！ここで「タップ」と「スクロール」を見分けさせるよ
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            // ✨ 「ポンッとタップして離した時 (SingleTapUp)」だけ反応する！
-            // スクロールした時はこれは呼ばれないから、音は鳴らないよ👍
-            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                playTapSound()
-                return true
-            }
-        })
-
         setContent {
+            // コンフリクト激戦区
             Team1ApplicationTheme {
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    // 🪄 魔法のスイッチ
                     var isTitle by remember { mutableStateOf(true) }
 
+                    // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
                     Crossfade(
-                        targetState = isTitle,
+                        targetState = isTitle, // このスイッチを見張るよ！
                         label = "画面切り替え",
+                        // 👇 魔法にかける時間（ミリ秒）。1000 = 1秒。
                         animationSpec = tween(durationMillis = 700)
                     ) { isShowingTitle ->
+
+                        //                        // ここで中身を出し分けるの！
                         if (isShowingTitle) {
                             TitleScreen(
                                 onTap = { isTitle = false },
@@ -72,38 +53,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    // ✨✨ 画面へのタッチを監視する場所 ✨✨
-    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        // ここで使い魔に「今の動き見てて！」って渡す
-        if (ev != null) {
-            gestureDetector.onTouchEvent(ev)
-        }
-
-        // 元々のボタン操作なども邪魔しないように返す
-        return super.dispatchTouchEvent(ev)
-    }
-
-    // 🎵 音を鳴らす関数
-    private fun playTapSound() {
-        try {
-            globalMediaPlayer?.let { player ->
-                if (player.isPlaying) {
-                    player.seekTo(0)
-                    player.start()
-                } else {
-                    player.start()
-                }
-            }
-        } catch (e: Exception) {
-            // エラー無視
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        globalMediaPlayer?.release()
-        globalMediaPlayer = null
     }
 }
