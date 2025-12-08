@@ -158,7 +158,9 @@ fun AlarmSetupDialog(
                     Button(
                         onClick = {
                             if (isValidTime) {
-                                onSave(timeInput.text)
+                                // 選択された時刻を親に渡し、
+                                // 親（AlarmScreen）が詳細設定画面への遷移をトリガーするようにする。
+                                onSave(timeInput.text) // -> onTimeSelected が呼ばれる
                             } else if (timeInput.text.length == 5) {
                                 // isValidTimeがfalseの場合、エラーを表示
                                 timeError = "時刻を正しく入力してください (HH:MM)"
