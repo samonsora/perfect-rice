@@ -2,8 +2,8 @@
 
 
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Base.Theme.Team1Application" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.Team1Application" parent="Theme.AppCompat.DayNight.NoActionBar">
     </style>
 
-    <style name="Theme.Team1Application" parent="Base.Theme.Team1Application" />
+
 </resources>
