@@ -31,28 +31,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-// 💡 AlarmSetting データクラスは AlarmData.kt に移動しました。
-// 💡 各種データ操作関数 (AlarmDataStore, deleteAlarmAndSave など) は外部ファイルにある前提です。
+// AlarmSetting データクラス、AlarmDataStore、deleteAlarmAndSave などのデータ操作関数は外部ファイルにある前提。
 
 // --- Composable関数 ---
 
+/**
+ * アラームリスト、フィルタリング、新規作成ボタンを含むメイン画面。
+ */
 @Composable
 fun AlarmScreen(modifier: Modifier = Modifier) {
     // 1. AndroidのContextを取得 (ファイルI/Oに必要)
     val context = LocalContext.current
 
-    // 2. 初期データをファイルから読み込む
+    // 2. 初期データをファイルから読み込み、可変なリストとして保持
     val initialAlarms = remember {
         AlarmDataStore.loadAlarms(context).toMutableStateList()
     }
     val allAlarms = initialAlarms
 
-    var showOnlyActive by remember { mutableStateOf(false) }
-
-    // 💡 変更: アラーム設定画面（ダイアログ）の表示状態と、選択された時刻（AlarmSetUIに渡すため）
-    var showSetupDialog by remember { mutableStateOf(false) }
-    // 💡 変更: AlarmSetUIを表示するためのステート。時刻設定が完了するとここに時刻がセットされる。
-    var timeForDetailSetup by remember { mutableStateOf<String?>(null) }
+    // UIステート
+    var showOnlyActive by remember { mutableStateOf(false) } // アクティブなアラームのみ表示するかどうか
+    var showSetupDialog by remember { mutableStateOf(false) } // アラーム時刻設定ダイアログの表示状態
+    var timeForDetailSetup by remember { mutableStateOf<String?>(null) } // 詳細設定画面 (AlarmSetUI) に渡す時刻。nullでない場合に画面を表示。
 
 
     // 3. アラームの状態を更新し、即座にファイルに保存する関数
@@ -61,26 +61,24 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         if (index != -1) {
             val oldAlarm = allAlarms[index]
             allAlarms[index] = oldAlarm.copy(isActive = newState)
-            AlarmDataStore.saveAlarms(context, allAlarms)
+            AlarmDataStore.saveAlarms(context, allAlarms) // ファイルに保存
         }
     }
 
     // アラームを削除する関数
     val onDeleteAlarm: (Int) -> Unit = { alarmId ->
-        deleteAlarmAndSave(context, allAlarms, alarmId)
+        deleteAlarmAndSave(context, allAlarms, alarmId) // 外部関数を呼び出し
     }
 
-    // 💡 新しいアラーム設定（時刻設定まで）が完了したときに呼び出される関数
-    // 💡 役割変更: ここで保存せず、詳細設定画面への遷移をトリガーする
+    // 新しいアラーム設定（時刻設定まで）が完了したときに呼び出される関数
+    // 役割: 時刻設定ダイアログを閉じ、詳細設定画面への遷移をトリガーする
     val onTimeSelected: (String) -> Unit = { selectedTime ->
         showSetupDialog = false // 時刻設定ダイアログを閉じる
         timeForDetailSetup = selectedTime // 詳細設定画面の表示をトリガー
     }
 
-    // 💡 AlarmSetUIでの「完了」時に呼ばれる関数
-    // 💡 役割変更: 詳細設定画面で最終的な保存処理を行う
-    // この関数は本来、AlarmSetUIで確定した最終的なアラーム設定オブジェクト全体を受け取るべきですが、
-    // 仮として、初期時刻のselectedTimeを使って保存を完了させます。
+    // AlarmSetUIでの「完了」時に呼ばれる関数
+    // 役割: 詳細設定画面で最終的な保存処理を行い、画面を閉じる
     val onNewAlarmSet: (String) -> Unit = { selectedTime ->
         // AlarmData.kt で定義された追加＆保存ロジックを呼び出す
         addNewAlarmAndSave(context, allAlarms, selectedTime)
@@ -96,33 +94,29 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 
     // --- 画面表示の条件分岐 ---
 
-    // 💡 優先度1: 時刻設定後に詳細設定画面（AlarmSetUI）を表示
+    // 優先度1: 時刻設定後に詳細設定画面（AlarmSetUI）を表示
     val selectedTime = timeForDetailSetup
     if (selectedTime != null) {
-        // AlarmSetUI を表示し、onSaveに最終的な保存処理を渡す
+        // AlarmSetUI を表示
         AlarmSetUI(
-            // ★ 修正点1: initialTime パラメータに selectedTime を渡す
             initialTime = selectedTime,
-
             onDismiss = { timeForDetailSetup = null }, // キャンセルでリストに戻る
             onSave = {
-                // ★ 修正点2: onSaveは引数なしのため、内部で selectedTime を使用して保存処理を呼び出す
-                // 実際にはAlarmSetUI内で時刻などの詳細情報を管理・更新し、onSaveでその情報を渡す必要があります
+                // onSaveは引数なしのため、内部で selectedTime を使用して保存処理を呼び出す
                 onNewAlarmSet(selectedTime)
             },
             // 新規作成時なので削除はキャンセルの動きを代用
             onDelete = { timeForDetailSetup = null }
         )
-        // AlarmSetUIが全画面表示を想定しているため、ここで後続のリスト表示を中断
+        // AlarmSetUIが全画面表示を想定しているため、リスト表示を中断
         return
     }
 
-    // 💡 優先度2: アラーム時刻設定ダイアログの表示
+    // 優先度2: アラーム時刻設定ダイアログの表示
     if (showSetupDialog) {
         AlarmSetupDialog(
             onDismiss = { showSetupDialog = false },
-            // onSave の代わりに onTimeSelected を使用
-            onSave = onTimeSelected
+            onSave = onTimeSelected // 時刻が確定したら onTimeSelected を呼び出す
         )
     }
 
@@ -179,8 +173,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         // 2. 設定を追加するボタン
         Button(
             onClick = {
-                // 💡 変更なし: ダイアログ表示のステートを true にする
-                showSetupDialog = true
+                showSetupDialog = true // 時刻設定ダイアログ表示のステートを true にする
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -192,7 +185,10 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 }
 
 // --- アラーム設定カードコンポーネント ---
-// ... (AlarmSettingCard 関数は変更なし)
+
+/**
+ * 個々のアラーム設定を表示するカードUIコンポーネント。
+ */
 @Composable
 fun AlarmSettingCard(
     alarm: AlarmSetting,
@@ -223,10 +219,10 @@ fun AlarmSettingCard(
 
             // 右側の操作ボタンとスイッチ
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 💡 削除ボタン
+                // 削除ボタン
                 IconButton(onClick = { onDeleteAlarm(alarm.id) }) {
                     Icon(
-                        imageVector = Icons.Filled.Delete, // ここで依存関係が必要になります
+                        imageVector = Icons.Filled.Delete,
                         contentDescription = "アラームを削除",
                         tint = MaterialTheme.colorScheme.error
                     )

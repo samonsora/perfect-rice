@@ -69,7 +69,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
     ) { innerPadding ->
-        // ✨✨ ここを修正しました！ ✨✨
         // innerPadding をそのまま使うと上にも隙間ができちゃうので、
         // 「下（ナビゲーションバー）の分だけ」余白を開けるように変更しました！
         HorizontalPager(
