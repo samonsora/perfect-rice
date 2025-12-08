@@ -2,6 +2,7 @@ package com.example.team1application
 
 // AlarmInitializer.kt
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 
 // Alarm.kt から getDummyAlarmSettings をインポート

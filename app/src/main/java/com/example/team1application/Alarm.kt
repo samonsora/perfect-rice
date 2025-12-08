@@ -40,7 +40,7 @@ data class AlarmSetting(
 fun getDummyAlarmSettings(): SnapshotStateList<AlarmSetting> {
     // 💡 必須の修正点: toMutableStateList() を使用して、リスト全体を監視対象の状態にする
     return listOf(
-        AlarmSetting(1, "06:30", "月, 火, 水, 木, 金", true),
+        AlarmSetting(1, "4:16", "土, 日, 月, 火, 水, 木, 金", true),
         AlarmSetting(2, "07:00", "土, 日", false),
         AlarmSetting(3, "08:00", "毎日", true)
     ).toMutableStateList() // <-- これが非常に重要です

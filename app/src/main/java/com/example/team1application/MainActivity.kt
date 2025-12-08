@@ -1,11 +1,17 @@
 package com.example.team1application
 
-
+import android.provider.Settings
+import android.app.AlarmManager
+import android.content.Intent
+import android.media.audiofx.EnvironmentalReverb
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,8 +35,12 @@ import androidx.compose.animation.core.tween
 import java.time.Clock
 
 
+
 class MainActivity : ComponentActivity() {
+    private lateinit var alarmInitializer: AlarmInitializer
+
     //  今後このoncleate多分消えてなくなるからどっかに避難
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -42,6 +52,20 @@ class MainActivity : ComponentActivity() {
                     // 🪄 魔法のスイッチ
                     var isTitle by remember { mutableStateOf(true) }
 
+                    val alarmManager = getSystemService(AlarmManager::class.java)
+                    if (!alarmManager.canScheduleExactAlarms()) {
+                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                    }
+
+
+
+
+                    // 1. AlarmInitializerをインスタンス化（ロジックの引き出し）
+                    // applicationContext を渡し、Activityの寿命に依存しないようにする
+                    alarmInitializer = AlarmInitializer(applicationContext)
+
+                    // 2. 本機能の初期設定を実行
+                    alarmInitializer.initializeAlarms()
 
                     // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
                     Crossfade(
