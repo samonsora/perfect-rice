@@ -32,7 +32,7 @@ import androidx.compose.animation.core.tween
 
 class MainActivity : ComponentActivity() {
 
-    private var currentTextSize: Float = 16f   // ← 元の変数そのまま
+    private var currentTextSize: Float = 16f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
