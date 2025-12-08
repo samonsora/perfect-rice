@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -16,7 +15,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 //import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -218,13 +216,6 @@ fun HomeMainContent(targetTime: String) {
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // 🔘 ボタン
-            Button(
-                onClick = { /* 動作 */ },
-                modifier = Modifier.padding(bottom = 48.dp)
-            ) {
-                Text("記録")
-            }
 
             Spacer(modifier = Modifier.weight(0.5f))
         }
