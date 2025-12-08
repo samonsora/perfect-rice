@@ -34,13 +34,13 @@ fun TitleScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val mediaPlayer = try { MediaPlayer.create(context, R.raw.tap_sound) } catch (e: Exception) { null }
+
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .clickable {
-                mediaPlayer?.start()
+
                 scope.launch {
                     delay(300)
                     onTap()
@@ -49,7 +49,7 @@ fun TitleScreen(
     ) {
         // 🖼️ 背景画像：ここがポイント！
         Image(
-            painter = painterResource(id = R.drawable.mikaduki),
+            painter = painterResource(id = R.drawable.kakasi),
             contentDescription = "背景画像",
             // 親(Box)いっぱいに広げる
             modifier = Modifier.fillMaxSize(),
