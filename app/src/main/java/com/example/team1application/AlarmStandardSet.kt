@@ -112,8 +112,8 @@ private fun rememberSlowDownFlingBehavior(): FlingBehavior {
     // スプラインベースの減衰アニメーションを使用
     val decay = splineBasedDecay<Float>(LocalDensity.current)
     // 減速係数: 値が大きいほど、フリングが早く停止する（慣性が弱い）
-    // デフォルトは 1.0f 相当。ここでは 5.0f に設定し、より強く減速させる。
-    val decelerationFactor = 5.0f
+    // デフォルトは 1.0f 相当。ここでは 2.0f に設定し、より強く減速させる。
+    val decelerationFactor = 4.0f
 
     return remember(decay, decelerationFactor) {
         SlowDownFlingBehavior(decay, decelerationFactor)
@@ -300,8 +300,8 @@ fun AlarmTimePicker(
 
             // カスタム操作ボタンの縦4列 Column
             Column {
-                // ボタンサイズを固定 (80dp x 40dp) に設定
-                val buttonModifier = Modifier.size(width = 80.dp, height = 40.dp)
+                // ボタンサイズを固定 (82dp x 40dp) に設定
+                val buttonModifier = Modifier.size(width = 82.dp, height = 40.dp)
 
                 OutlinedButton(
                     onClick = { addTime(Calendar.MINUTE, 10) },
