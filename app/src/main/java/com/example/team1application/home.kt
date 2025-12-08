@@ -10,9 +10,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
-//import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -30,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -47,18 +44,14 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { 5 }, initialPage = 2)
     val scope = rememberCoroutineScope()
 
-    // ✨✨ データ管理コードは全部消しました！スッキリ！ ✨✨
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar {
                 val items = listOfNotNull(
-                    // BottomNavItem("食記録", Icons.Default.Restaurant, 0),
                     BottomNavItem("睡眠記録", Icons.Default.Star, 1),
                     BottomNavItem("ホーム", Icons.Default.Home, 2),
                     BottomNavItem("アラーム", Icons.Default.Notifications, 3),
-                    // BottomNavItem("設定", Icons.Default.Settings, 4)
                 )
 
                 items.forEach { item ->
@@ -76,16 +69,19 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
     ) { innerPadding ->
+        // ✨✨ ここを修正しました！ ✨✨
+        // innerPadding をそのまま使うと上にも隙間ができちゃうので、
+        // 「下（ナビゲーションバー）の分だけ」余白を開けるように変更しました！
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(bottom = innerPadding.calculateBottomPadding())
         ) { page ->
             when (page) {
                 1 -> RirekiScreen()
                 2 -> HomeMainContent()
-                3 -> AlarmScreen() // 👈 引数なしで呼べるようになりました！
+                3 -> AlarmScreen()
                 else -> Text("準備中...")
             }
         }
@@ -145,7 +141,7 @@ fun HomeMainContent() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
+            // (今は空っぽ)
         }
     }
 }
