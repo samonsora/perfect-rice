@@ -3,6 +3,8 @@ package com.example.team1application
 import android.media.MediaPlayer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,11 @@ import androidx.compose.ui.unit.dp
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.sp
+
 
 @Composable
 fun TitleScreen(
@@ -34,13 +41,15 @@ fun TitleScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
+    val repo = remember { FontSizeRepository(context) } // 文字の変更
+    val textSize by repo.fontSizeFlow.collectAsState(initial = 20f) // 文字の変更
+    val mediaPlayer = try { MediaPlayer.create(context, R.raw.tap_sound) } catch (e: Exception) { null }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .clickable {
-
+                mediaPlayer?.start()
                 scope.launch {
                     delay(300)
                     onTap()

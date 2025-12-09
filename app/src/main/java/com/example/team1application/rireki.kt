@@ -15,6 +15,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import android.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.data.BarEntry
@@ -90,6 +91,8 @@ sealed class GraphType(
 @Composable
 fun RirekiScreen(modifier: Modifier = Modifier) {
     val allRecords = getDummyRecords()
+
+
 
     // 状態iをRirekScreenで定義 (ステートホイスティング)
     var startDate by remember { mutableStateOf<Long?>(null) }
@@ -200,6 +203,7 @@ fun RirekiScreen(modifier: Modifier = Modifier) {
 
         // 3. 表示件数
         Text(text = "表示件数: ${filteredRecords.size}件", style = MaterialTheme.typography.titleMedium)
+
 
         Spacer(modifier = Modifier.height(8.dp))
 

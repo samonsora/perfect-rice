@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
 
     //  今後このoncleate多分消えてなくなるからどっかに避難
     @RequiresApi(Build.VERSION_CODES.S)
+    private var currentTextSize: Float = 16f
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
