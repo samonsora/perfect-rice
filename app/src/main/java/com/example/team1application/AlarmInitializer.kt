@@ -1,14 +1,33 @@
 package com.example.team1application
 
-// AlarmInitializer.kt
 import android.content.Context
-import android.content.Intent
 import android.util.Log
 
-// Alarm.kt から getDummyAlarmSettings をインポート
+// 💡 補足: AlarmScheduler は別途インポートが必要です
+// import com.example.team1application.scheduler.AlarmScheduler
 
-// AlarmScheduler.kt をインポート
-// (↑ 実際のパッケージ名に合わせて変更してください)
+data class AlarmSetting(
+    val id: Int,
+    val time: String,      // 例: "07:30"
+    val days: String,      // 例: "Mon,Tue,Wed"
+    val isActive: Boolean
+)
+
+// 💡 補足: 戻り値の型は List<AlarmSetting> のままでOK
+fun getDummyAlarmSettings(): List<AlarmSetting> {
+    return mutableListOf(
+        AlarmSetting(1, "06:00", "Mon,Tue,Wed,Thu,Fri", true),
+        AlarmSetting(2, "08:30", "Sat,Sun", true),
+        AlarmSetting(3, "12:00", "Mon,Wed,Fri", false), // toggleAlarm3State のターゲット
+        AlarmSetting(4, "18:00", "Daily", true)
+    )
+}
+
+// 💡 補足: AlarmScheduler クラスの仮定義が必要です
+// class AlarmScheduler(context: Context) {
+//     fun updateAllAlarms(settings: List<AlarmSetting>) { /* ... */ }
+// }
+
 
 /**
  * アラーム機能の初期化と操作ロジックを担うクラス。
@@ -16,8 +35,9 @@ import android.util.Log
  */
 class AlarmInitializer(private val context: Context) {
 
-    // 内部で AlarmScheduler と AlarmSetting データを保持
-    private val alarmSettings = getDummyAlarmSettings()
+    // 💡 修正: MutableList<AlarmSetting> として明示的に宣言し、toMutableList() で初期化する。
+    //         これにより、リストの要素の代入（更新）が可能になる。
+    private val alarmSettings: MutableList<AlarmSetting> = getDummyAlarmSettings().toMutableList()
     private val scheduler = AlarmScheduler(context)
 
     /**
@@ -31,17 +51,13 @@ class AlarmInitializer(private val context: Context) {
         Log.i("AlarmInitializer", "初期アラーム設定が完了しました。")
     }
 
-    /**
-     * [設定変更の例]
-     * アラームID 3 の isActive 状態を切り替え、アラームを更新します。
-     * このメソッドをUI（ボタンなど）に紐づけることで、設定変更とスケジュールの更新を一元管理できます。
-     */
     fun toggleAlarm3State() {
         val index = alarmSettings.indexOfFirst { it.id == 3 }
         if (index != -1) {
             val currentSetting = alarmSettings[index]
 
-            // 状態リストの内容を更新
+            // 状態リストの内容を更新 (52行目付近)
+            // 💡 修正後: alarmSettings が MutableList のため、この代入操作が可能になる。
             alarmSettings[index] = currentSetting.copy(isActive = !currentSetting.isActive)
 
             // 状態が変わったため、アラームを再スケジュール (isActive=false のアラームはキャンセルされる)

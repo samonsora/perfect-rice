@@ -1,6 +1,5 @@
 package com.example.team1application
 
-// AlarmScheduler.kt
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
@@ -33,27 +32,26 @@ class AlarmScheduler(private val context: Context) {
      */
     private fun scheduleAlarm(setting: AlarmSetting) {
         val daysOfWeek = DayOfWeekUtils.parseDays(setting.days)
-        val intent = Intent(context, AlarmReceiver::class.java)
+        // ⚠️ 削除: Request Code 0 で PendingIntent を生成していた不要なコードを削除
+
         // time (例: "06:30") を時と分に分解
         val (hour, minute) = setting.time.split(":").map { it.toIntOrNull() ?: 0 }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+
         daysOfWeek.forEach { dayOfWeek ->
+            // 1. 一意な Request Code を生成
             val requestCode = DayOfWeekUtils.generateRequestCode(setting.id, dayOfWeek)
+
+            // 2. Request Code を使って PendingIntent を生成
             val pendingIntent = createPendingIntent(setting.id, requestCode)
 
-            // 直近のトリガー時刻を計算
+            // 3. 直近のトリガー時刻を計算
             val triggerTime = calculateNextTriggerTime(dayOfWeek, hour, minute)
 
-            // 3. アラームの設定 (一週間ごとの繰り返し)
+            // 4. アラームの設定 (一週間ごとの繰り返し)
             alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP, // 絶対時刻 (RTC) 基準で、CPUをスリープ解除 (_WAKEUP) して実行
-                triggerTime.timeInMillis, // 初回起動時刻をミリ秒で指定
-                AlarmManager.INTERVAL_DAY * 7, // 1週間間隔で繰り返す
+                AlarmManager.RTC_WAKEUP,
+                triggerTime.timeInMillis,
+                AlarmManager.INTERVAL_DAY * 7,
                 pendingIntent
             )
 
@@ -62,12 +60,7 @@ class AlarmScheduler(private val context: Context) {
                 "AlarmScheduler",
                 "✅ 設定ID:${setting.id} (${dayOfWeek}) を ${triggerTime.time} にスケジュールしました (RC:$requestCode)"
             )
-            // AlarmScheduler.kt - scheduleAlarm 内
-
-
         }
-
-
     }
 
     // ... (cancelAllExistingAlarms、createPendingIntent、calculateNextTriggerTime は前回の回答と同じロジックを使用)
