@@ -1,11 +1,10 @@
 package com.example.team1application
 
 import android.content.Context
-import kotlinx.serialization.encodeToString
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
-import androidx.compose.runtime.snapshots.SnapshotStateList
 
 /**
  * 1回分のアラーム設定を保持するデータクラス

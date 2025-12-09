@@ -28,8 +28,11 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
+// AlarmTimeDirectInput および AlarmTimePicker は、このファイル内または外部に定義されている前提。
+
 /**
- * ユーザーが新しいアラームを設定するためのダイアログUI
+ * ユーザーが新しいアラームの時刻を設定するためのダイアログUI。
+ *
  * @param onDismiss ダイアログを閉じる際に呼び出す関数
  * @param onSave 設定が完了した際に、選択された時刻文字列 (例: "07:30") を渡して呼び出す関数
  */
@@ -38,35 +41,34 @@ fun AlarmSetupDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
+    // タイムゾーンとフォーマットの設定（JSTを使用）
     val jstTimeZone = remember { TimeZone.getTimeZone("Asia/Tokyo") }
     val timeFormat = remember {
         SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
-            // ★ timeFormat に JST を設定
-            timeZone = jstTimeZone
+            timeZone = jstTimeZone // JSTを設定
         }
     }
 
+    // デフォルトの時刻を現在のJST時刻で設定
     val defaultTimeString = remember {
-        // ★ Calendar に JST を設定し、その時刻をフォーマット
         val calendar = Calendar.getInstance(jstTimeZone)
         timeFormat.format(calendar.time)
     }
 
-    // timeInputの初期値を、現在の時刻を hh:mm 形式で取得し、カーソルを末尾に設定
+    // UIステート
     var timeInput by remember {
+        // 初期値を現在の時刻にし、カーソルを末尾に設定
         mutableStateOf(TextFieldValue(defaultTimeString, selection = TextRange(defaultTimeString.length)))
     }
-    println(timeInput)
     var timeError by remember { mutableStateOf<String?>(null) }
     var previousTimeInput by remember { mutableStateOf(timeInput) }
-    var isDirectInputMode by remember { mutableStateOf(false) }
+    var isDirectInputMode by remember { mutableStateOf(false) } // ピッカー/直接入力モード切替
 
     // 時刻のバリデーションロジック
     val isValidTime = remember(timeInput.text) {
         val parser = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
-            isLenient = false
-            // ★ バリデーションパーサーにも JST を設定
-            timeZone = jstTimeZone
+            isLenient = false // 厳密なパース
+            timeZone = jstTimeZone // バリデーションパーサーにも JST を設定
         }
         val text = timeInput.text
         try {
@@ -77,7 +79,7 @@ fun AlarmSetupDialog(
             }
             true
         } catch (_: Exception) {
-            // 入力中の状態 (長さが5未満) はエラーとしない
+            // 入力中（長さが5未満）はエラーとしない
             if (text.length == 5) {
                 timeError = "時刻を正しく入力してください (HH:MM)"
             }
@@ -106,16 +108,16 @@ fun AlarmSetupDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // --- モードの切り替え ---
+                // --- 時刻入力エリア (モード切り替え) ---
                 if (isDirectInputMode) {
-                    // 直接数字入力モード
+                    // 直接数字入力モード (AlarmTimeDirectInput は定義が省略されている)
                     AlarmTimeDirectInput(
                         timeInput = timeInput,
                         timeError = timeError,
                         onTimeChange = updateTimeState
                     )
                 } else {
-                    // ピッカーモード
+                    // ピッカーモード (AlarmTimePicker は定義が省略されている)
                     AlarmTimePicker(
                         timeInput = timeInput,
                         timeFormat = timeFormat,
@@ -137,6 +139,7 @@ fun AlarmSetupDialog(
                             // モード切替時、カーソルを末尾に設定し直す
                             timeInput = TextFieldValue(text, selection = TextRange(text.length))
                             previousTimeInput = timeInput
+                            // バリデーションを再評価し、エラーメッセージを設定
                             timeError = if (isValidTime) null else "時刻を正しく入力してください (HH:MM)"
                         }
                     ) {
@@ -146,7 +149,7 @@ fun AlarmSetupDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // --- ボタンエリア ---
+                // --- ボタンエリア (キャンセルとOK) ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -158,13 +161,15 @@ fun AlarmSetupDialog(
                     Button(
                         onClick = {
                             if (isValidTime) {
-                                onSave(timeInput.text)
+                                // 選択された時刻を親（AlarmScreen）に渡し、
+                                // 詳細設定画面への遷移をトリガーさせる
+                                onSave(timeInput.text) // -> onTimeSelected が呼ばれる
                             } else if (timeInput.text.length == 5) {
                                 // isValidTimeがfalseの場合、エラーを表示
                                 timeError = "時刻を正しく入力してください (HH:MM)"
                             }
                         },
-                        enabled = isValidTime
+                        enabled = isValidTime // 時刻が有効な場合のみOKボタンを有効化
                     ) {
                         Text("OK")
                     }

@@ -49,7 +49,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             // コンフリクト激戦区
             Team1ApplicationTheme {
-
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     // 🪄 魔法のスイッチ
                     var isTitle by remember { mutableStateOf(true) }
