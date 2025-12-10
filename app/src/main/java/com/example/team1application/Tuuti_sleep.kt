@@ -8,9 +8,8 @@ import android.content.Context // アプリケーションコンテキスト
 import android.os.Build // Androidバージョン判定のため
 import androidx.core.app.NotificationCompat // 互換性のある通知を作成
 import java.util.Calendar // 時刻判定のため
-
-import androidx.work.CoroutineWorker // 👈 追加
-import androidx.work.WorkerParameters // 👈 追加
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
 
 
 class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
