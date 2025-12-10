@@ -3,15 +3,6 @@ package com.example.team1application
 import android.content.Context
 import android.util.Log
 
-// 💡 補足: AlarmScheduler は別途インポートが必要です
-// import com.example.team1application.scheduler.AlarmScheduler
-
-data class AlarmSetting(
-    val id: Int,
-    val time: String,      // 例: "07:30"
-    val days: String,      // 例: "Mon,Tue,Wed"
-    val isActive: Boolean
-)
 
 // 💡 補足: 戻り値の型は List<AlarmSetting> のままでOK
 fun getDummyAlarmSettings(): List<AlarmSetting> {

@@ -68,6 +68,7 @@ dependencies {
     coreLibraryDesugaring(libs.android.tools.desugar.jdk.libs)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
 }
