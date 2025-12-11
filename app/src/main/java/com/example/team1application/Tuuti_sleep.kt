@@ -8,7 +8,7 @@ import android.content.Context // アプリケーションコンテキスト
 import android.os.Build // Androidバージョン判定のため
 import androidx.core.app.NotificationCompat // 互換性のある通知を作成
 import java.util.Calendar // 時刻判定のため
-
+import android.util.Log
 import androidx.work.CoroutineWorker // 👈 追加
 import androidx.work.WorkerParameters // 👈 追加
 
@@ -18,13 +18,14 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     // 監視対象のアプリのパッケージ名リスト (必要に応じて変更)
     private val targetPackages = listOf("com.instagram.android", "com.google.android.youtube")
     // ユーザー設定の就寝時刻 (23時0分を例とする)
-    private val bedtimeHour = 23
+    private val bedtimeHour = 5
     // 時刻判定を開始する、就寝時刻より前の分数
-    private val checkingBeforeMinutes = 10
+    private val checkingBeforeMinutes = 30
 
 
     override suspend fun doWork(): Result {
         // 現在時刻と就寝時刻をCalendarオブジェクトで取得
+        Log.d("USAGE_CHECK", "WorkerがOSによって起動されました。時刻判定を開始します。")
         val now = Calendar.getInstance()
         val bedtime = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, bedtimeHour)
