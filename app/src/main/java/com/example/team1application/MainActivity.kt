@@ -15,30 +15,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.team1application.ui.theme.Team1ApplicationTheme
+// 権限ヘルパー関数はcom.example.team1applicationパッケージ内にあると仮定
 
 
 class MainActivity : ComponentActivity() {
-    //  今後このoncleate多分消えてなくなるからどっかに避難
+
+    // 💡 onCreate は画面表示の初期化に専念させる
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // コンフリクト激戦区
             Team1ApplicationTheme {
-
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // 🪄 魔法のスイッチ
+
                     var isTitle by remember { mutableStateOf(true) }
 
                     // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
                     Crossfade(
-                        targetState = isTitle, // このスイッチを見張るよ！
+                        targetState = isTitle,
                         label = "画面切り替え",
-                        // 👇 魔法にかける時間（ミリ秒）。1000 = 1秒。
                         animationSpec = tween(durationMillis = 700)
                     ) { isShowingTitle ->
 
-                        // ここで中身を出し分けるの！
                         if (isShowingTitle) {
                             TitleScreen(
                                 onTap = { isTitle = false },
@@ -54,4 +52,29 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // 🚨 修正点 1: 権限チェックメソッドをクラス直下に移動 🚨
+    // 画面に戻ってきたときに権限チェックを再実行するため onResume() に配置するのが適切
+
+    override fun onResume() {
+        super.onResume()
+
+        // 権限チェックと要求のロジックを実行
+        checkUsageAccessPermission()
+    }
+
+    /**
+     * 使用状況アクセス権限をチェックし、許可されていなければ設定画面へ誘導します。
+     * このメソッドは MainActivity クラスの直下に定義する必要があります。
+     */
+    private fun checkUsageAccessPermission() {
+        // 権限チェック
+        if (!isUsageAccessGranted(this)) {
+            // 権限がなければ設定画面へ誘導
+            requestUsageAccess(this)
+        }
+        // 権限があれば、SleepReminder が Worker をスケジュール済み
+    }
 }
+// 💡 注意: isUsageAccessGranted と requestUsageAccess の定義は、
+// このファイルの外側 (同じパッケージの別の .kt ファイル) にある必要があります。

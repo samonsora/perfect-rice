@@ -18,9 +18,9 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     // 監視対象のアプリのパッケージ名リスト (必要に応じて変更)
     private val targetPackages = listOf("com.instagram.android", "com.google.android.youtube")
     // ユーザー設定の就寝時刻 (23時0分を例とする)
-    private val bedtimeHour = 5
+    private val bedtimeHour = 4
     // 時刻判定を開始する、就寝時刻より前の分数
-    private val checkingBeforeMinutes = 30
+    private val checkingBeforeMinutes = 1339
 
 
     override suspend fun doWork(): Result {
@@ -36,10 +36,19 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val checkTimeStart = bedtime.clone() as Calendar
         checkTimeStart.add(Calendar.MINUTE, -checkingBeforeMinutes)
 
+        val nowHourMinute = String.format("%02d:%02d", now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE))
+        val checkStartHourMinute = String.format("%02d:%02d", checkTimeStart.get(Calendar.HOUR_OF_DAY), checkTimeStart.get(Calendar.MINUTE))
+        val bedtimeHourMinute = String.format("%02d:%02d", bedtime.get(Calendar.HOUR_OF_DAY), bedtime.get(Calendar.MINUTE))
+
+        Log.i("USAGE_CHECK_TIME", "現在時刻: $nowHourMinute")
+        Log.i("USAGE_CHECK_TIME", "監視開始時刻: $checkStartHourMinute (就寝時刻: $bedtimeHourMinute)")
+
         // 判定ロジック: 現在時刻が「10分前」〜「就寝時刻」の範囲外なら終了
         if (now.before(checkTimeStart) || now.after(bedtime)) {
+            Log.w("USAGE_CHECK_TIME", "Workerは監視時間外のため、処理をスキップします。")
             return Result.success() // 成功を返して次の実行を待つ
         }
+        Log.d("USAGE_CHECK", "--- 監視時間内です。アプリ使用状況の検出を開始します。 ---")
 
         // --- アプリ使用状況の検出 ---
 
