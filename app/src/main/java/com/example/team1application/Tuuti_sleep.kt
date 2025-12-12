@@ -19,7 +19,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     // 監視対象のアプリのパッケージ名リスト (必要に応じて変更)
     private val targetPackages = listOf("com.instagram.android", "com.google.android.youtube")
     // ユーザー設定の就寝時刻 (23時0分を例とする)
-    private val bedtimeHour = 4
+    private val bedtimeHour = 7
     // 時刻判定を開始する、就寝時刻より前の分数
     private val checkingBeforeMinutes = 120
 
@@ -70,7 +70,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         // 判定期間の終わり (現在時刻)
         val endTime = System.currentTimeMillis()
         // 判定期間の始まり (直近5分前)
-        val startTime = endTime - (5 * 60 * 1000)
+        val startTime = checkTimeStart.timeInMillis
 
         // UsageStatsManagerのインスタンス取得
         val usageStatsManager = applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -90,7 +90,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             }
         }
         if (currentForegroundPackage == null) {
-            Log.d("USAGE_DEBUG", "過去5分間にフォアグラウンドイベントは検出されませんでした。")
+            Log.d("USAGE_DEBUG", "過去15分間にフォアグラウンドイベントは検出されませんでした。")
         } else {
             Log.d("USAGE_DEBUG", "最終検出パッケージ: $currentForegroundPackage (監視対象: $currentForegroundPackage in targetPackages)")
         }
