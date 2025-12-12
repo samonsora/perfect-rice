@@ -51,7 +51,8 @@ fun AlarmSetUI(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
-    initialTime: String
+    initialTime: String,
+    isNewAlarm: Boolean
 ) {
     // 1. 画面で設定する時刻の状態を保持
     var alarmTime by remember { mutableStateOf(initialTime) }
@@ -64,6 +65,7 @@ fun AlarmSetUI(
     val primaryColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
+        // ... (TopBarは変更なし) ...
         topBar = {
             // TopAppBar: 「< アラームの設定」
             Row(
@@ -98,24 +100,43 @@ fun AlarmSetUI(
                     .height(80.dp)
                     .background(MaterialTheme.colorScheme.surface) // Surfaceカラーを使用
                     .padding(horizontal = 16.dp, vertical = 8.dp),
+                // 常に SpaceAround を使用し、要素数を一定に保つ
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                // 削除ボタン
-                TextButton(
-                    onClick = onDelete,
-                    modifier = Modifier.weight(1f).height(48.dp)
-                ) {
-                    Text("削除", color = MaterialTheme.colorScheme.error)
+                // 削除ボタン (isNewAlarm が false、つまり既存の編集時のみ表示)
+                if (!isNewAlarm) {
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("削除")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                } else {
+                    // 新規作成時は見えないボタン（Spacer）を配置し、スペースを確保
+                    // 削除ボタンと同じ weight と Spacer の幅を確保する
+                    Spacer(modifier = Modifier.weight(1f).height(48.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
-                Spacer(Modifier.width(8.dp))
+
                 // キャンセルボタン
                 TextButton(
                     onClick = onDismiss,
-                    modifier = Modifier.weight(1f).height(48.dp)
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = onSurfaceColor
+                    )
                 ) {
-                    Text("キャンセル", color = onSurfaceColor)
+                    Text("キャンセル")
                 }
+
                 Spacer(Modifier.width(8.dp))
+
                 // 完了ボタン
                 Button(
                     onClick = onSave,
