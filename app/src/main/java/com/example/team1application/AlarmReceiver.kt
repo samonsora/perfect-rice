@@ -3,6 +3,9 @@ package com.example.team1application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.util.Log
 import android.widget.Toast
 
@@ -10,11 +13,18 @@ class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
-
+        val i = Intent(context, AlarmActivity::class.java)
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        /*
+        * アプリ画面表示中はできる
+        * しかし、スリープやスマホのホーム画面などの様に
+        * アプリ画面日出力の場合はできないっぽい。onCreateオーバーライドしてるのに。。。
+        * アプリを落とした場合なんかもってのほか
+         */
+        context.startActivity(i)
+        
         Log.d("AlarmReceiver", "⏰ ID:$alarmId のアラームがトリガーされました！")
 
-        // ここにアラームトリガー時の処理を記述します。
-        Toast.makeText(context, "【アラーム】ID: $alarmId - 時間です！", Toast.LENGTH_LONG).show()
 
         // 注意: 長時間かかる処理はWorkManagerやForeground Serviceを開始して実行してください。
         /*
