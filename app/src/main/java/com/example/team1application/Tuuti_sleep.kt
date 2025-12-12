@@ -9,6 +9,7 @@ import android.os.Build // Androidバージョン判定のため
 import androidx.core.app.NotificationCompat // 互換性のある通知を作成
 import java.util.Calendar // 時刻判定のため
 import android.util.Log
+import java.util.Locale
 import androidx.work.CoroutineWorker // 👈 追加
 import androidx.work.WorkerParameters // 👈 追加
 
@@ -20,7 +21,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     // ユーザー設定の就寝時刻 (23時0分を例とする)
     private val bedtimeHour = 4
     // 時刻判定を開始する、就寝時刻より前の分数
-    private val checkingBeforeMinutes = 1339
+    private val checkingBeforeMinutes = 120
 
 
     override suspend fun doWork(): Result {
@@ -36,10 +37,24 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val checkTimeStart = bedtime.clone() as Calendar
         checkTimeStart.add(Calendar.MINUTE, -checkingBeforeMinutes)
 
-        val nowHourMinute = String.format("%02d:%02d", now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE))
-        val checkStartHourMinute = String.format("%02d:%02d", checkTimeStart.get(Calendar.HOUR_OF_DAY), checkTimeStart.get(Calendar.MINUTE))
-        val bedtimeHourMinute = String.format("%02d:%02d", bedtime.get(Calendar.HOUR_OF_DAY), bedtime.get(Calendar.MINUTE))
-
+        val nowHourMinute = String.format(
+            Locale.getDefault(), // 💡 最初の引数としてロケールを指定
+            "%02d:%02d",
+            now.get(Calendar.HOUR_OF_DAY),
+            now.get(Calendar.MINUTE)
+        )
+        val checkStartHourMinute = String.format(
+            Locale.getDefault(), // 💡 最初の引数としてロケールを指定
+            "%02d:%02d",
+            checkTimeStart.get(Calendar.HOUR_OF_DAY),
+            checkTimeStart.get(Calendar.MINUTE)
+        )
+        val bedtimeHourMinute = String.format(
+            Locale.getDefault(), // 💡 最初の引数としてロケールを指定
+            "%02d:%02d",
+            bedtime.get(Calendar.HOUR_OF_DAY),
+            bedtime.get(Calendar.MINUTE)
+        )
         Log.i("USAGE_CHECK_TIME", "現在時刻: $nowHourMinute")
         Log.i("USAGE_CHECK_TIME", "監視開始時刻: $checkStartHourMinute (就寝時刻: $bedtimeHourMinute)")
 
@@ -71,7 +86,13 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             // アプリがフォアグラウンドに来たイベントを記録
             if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                 currentForegroundPackage = event.packageName
+                Log.d("USAGE_DEBUG", "検出イベント: ${event.packageName}")
             }
+        }
+        if (currentForegroundPackage == null) {
+            Log.d("USAGE_DEBUG", "過去5分間にフォアグラウンドイベントは検出されませんでした。")
+        } else {
+            Log.d("USAGE_DEBUG", "最終検出パッケージ: $currentForegroundPackage (監視対象: $currentForegroundPackage in targetPackages)")
         }
 
         // 3. 判定と通知の実行
@@ -104,6 +125,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
 
     // 通知機能の実装
     private fun showNotification(context: Context, title: String, message: String) {
+        Log.e("USAGE_NOTIFY", "通知を表示します: $title - $message")
         val channelId = "sleep_reminder_channel"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 

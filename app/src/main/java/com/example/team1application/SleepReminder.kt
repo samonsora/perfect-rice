@@ -20,7 +20,7 @@ class SleepReminder : Application() {
 
         // 5分ごとに UsageCheckWorker を実行するリクエストを作成
         val periodicRequest = PeriodicWorkRequestBuilder<UsageCheckWorker>(
-            repeatInterval = 1, // 実行間隔: 1分
+            repeatInterval = 15, // 実行間隔: 15分
             repeatIntervalTimeUnit = TimeUnit.MINUTES // 単位: 分
         )
             .addTag("UsageCheckTask") // WorkManagerでタスクを識別するためのタグ
