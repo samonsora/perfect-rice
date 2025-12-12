@@ -4,111 +4,165 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import java.util.Calendar
 
+/**
+ * ダミーのアラーム設定を作成する関数
+ * → 実際にはRoomやDataStoreなどから読み込む前提の仮データ
+ */
+fun getDummyAlarmSettings(): SnapshotStateList<AlarmSetting> {
+    // SnapshotStateList にしてUIが再描画を検知できるようにする
+    return listOf(
+        AlarmSetting(1, "02:44", "土, 日, 月, 火, 水, 木, 金", true)
+    ).toMutableStateList()
+}
+
+/**
+ * アラームを実際に OS（AlarmManager）にスケジュール設定するクラス。
+ * 初期設定や変更処理は AlarmInitializer に任せ、
+ * 「実際にアラームを OS に登録する責務」だけを受け持つ。
+ */
 class AlarmScheduler(private val context: Context) {
 
+    // AlarmManager を取得。OS にアラームを依頼するためのシステムサービス。
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-
-
     /**
-     * 全てのアラーム設定を読み込み、スケジュール（設定またはキャンセル）を更新する。
-     * @param settings AlarmSettingのリスト
+     * すべてのアラーム設定に基づいて、OS のアラーム登録を更新する。
+     * 1. 既存アラームを全キャンセル
+     * 2. isActive = true のアラームだけ再登録
      */
     fun updateAllAlarms(settings: List<AlarmSetting>) {
-        // 1. 全てのアラームを一旦キャンセル（設定変更や無効化に対応するため）
+        // まず全アラームをキャンセル（変更がある可能性があるため）
         cancelAllExistingAlarms(settings)
 
-        // 2. 🟢 isActiveがtrueの設定のみをスケジュール 🟢
+        // 次に有効な設定のみ OS に登録
         settings.filter { it.isActive }.forEach { setting ->
             scheduleAlarm(setting)
         }
     }
 
     /**
-     * 特定の設定に基づいて、曜日ごとのアラームをスケジュールする。
+     * 1つの設定について「曜日ごと」にアラームを exact で設定する。
+     * setExactAndAllowWhileIdle を使うため weekly repeat は使えない。
+     * → そのため、Receiver 側で「次の週の同じ時刻に再スケジュール」する方式にする。
      */
     private fun scheduleAlarm(setting: AlarmSetting) {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Log.e("AlarmScheduler", "❌ Exact アラーム許可がありません")
+                // 必要なら設定画面へ誘導
+                return
+            }
+        }
+
+        // "月, 火, 水" → Android の DayOfWeek (Calendar.MONDAY etc) に変換
         val daysOfWeek = DayOfWeekUtils.parseDays(setting.days)
-        // ⚠️ 削除: Request Code 0 で PendingIntent を生成していた不要なコードを削除
 
-        // time (例: "06:30") を時と分に分解
-        val (hour, minute) = setting.time.split(":").map { it.toIntOrNull() ?: 0 }
+        // "06:30" を hour と minute に分解
+        val (hour, minute) = setting.time.split(":").map { it.toInt() }
 
+        // アラームを曜日ごとに設定
         daysOfWeek.forEach { dayOfWeek ->
-            // 1. 一意な Request Code を生成
+
+            // 各曜日ごとに unique な requestCode を作成
             val requestCode = DayOfWeekUtils.generateRequestCode(setting.id, dayOfWeek)
 
-            // 2. Request Code を使って PendingIntent を生成
+            // 対象アラームを識別する PendingIntent を作成
             val pendingIntent = createPendingIntent(setting.id, requestCode)
 
-            // 3. 直近のトリガー時刻を計算
-            val triggerTime = calculateNextTriggerTime(dayOfWeek, hour, minute)
+            // 次回の発火時刻（ミリ秒）を計算
+            val triggerTime = calculateNextTriggerTime(dayOfWeek, hour, minute).timeInMillis
 
-            // 4. アラームの設定 (一週間ごとの繰り返し)
-            alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP,
-                triggerTime.timeInMillis,
-                AlarmManager.INTERVAL_DAY * 7,
+            // ---------- 🔥 ここが最重要：Exact アラームの登録 🔥 ----------
+            // 端末が Doze でも正確な時刻で発火させたい場合はこれ一択
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,  // スリープでも起こす
+                triggerTime,              // 正確な発火時刻
                 pendingIntent
             )
-
+            // -----------------------------------------------------------------
 
             Log.i(
                 "AlarmScheduler",
-                "✅ 設定ID:${setting.id} (${dayOfWeek}) を ${triggerTime.time} にスケジュールしました (RC:$requestCode)"
+                "🔔 EXACT アラーム登録: ID:${setting.id}, 曜日:$dayOfWeek, 次回:${java.util.Date(triggerTime)} (RC:$requestCode)"
             )
         }
     }
-
-    // ... (cancelAllExistingAlarms、createPendingIntent、calculateNextTriggerTime は前回の回答と同じロジックを使用)
+    /**
+     * すでに登録されているアラームをすべてキャンセルする。
+     * → UI でスイッチ OFF とか変更があったときに対応。
+     */
     private fun cancelAllExistingAlarms(settings: List<AlarmSetting>) {
         settings.forEach { setting ->
+            // 曜日リストを取得
             DayOfWeekUtils.parseDays(setting.days).forEach { dayOfWeek ->
+
+                // 各曜日の requestCode を決定
                 val requestCode = DayOfWeekUtils.generateRequestCode(setting.id, dayOfWeek)
+
+                // 対応する PendingIntent を作成
                 val pendingIntent = createPendingIntent(setting.id, requestCode)
+
+                // AlarmManager に cancel 依頼
                 alarmManager.cancel(pendingIntent)
             }
         }
     }
 
+    /**
+     * AlarmReceiver に届けるための PendingIntent を生成する関数
+     * - requestCode が違えば別のアラームとして扱われる
+     */
     private fun createPendingIntent(settingId: Int, requestCode: Int): PendingIntent {
+
+        // AlarmReceiver に渡す Intent を作成（どのアラームか ID を付与）
         val intent = Intent(context, AlarmReceiver::class.java).apply {
-            putExtra("ALARM_ID", settingId) // どの設定がトリガーされたかReceiverに伝える
+            putExtra("ALARM_ID", settingId)
         }
 
+        // PendingIntent を生成して返す
         return PendingIntent.getBroadcast(
             context,
-            requestCode,
+            requestCode, // 一意識のため必須
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
+    /**
+     * 次に鳴るべきアラームの日時を計算する。
+     * - 今日の設定時刻が過ぎていれば翌日以降に
+     * - 指定の曜日になるまで日付を進める
+     */
     private fun calculateNextTriggerTime(dayOfWeek: Int, hour: Int, minute: Int): Calendar {
+
         val calendar = Calendar.getInstance().apply {
+            // 現在時刻で初期化
             timeInMillis = System.currentTimeMillis()
+
+            // 指定された時刻に合わせる
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
 
-
-        // 現在時刻と比較し、指定時刻が既に過ぎている場合は翌日以降に設定
+        // 今すでに設定時刻を過ぎていたら翌日に変更
         if (calendar.timeInMillis <= System.currentTimeMillis()) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
 
-
-        // 指定の曜日になるまで日付を進める
+        // 指定した曜日になるまで1日ずつ進める
         while (calendar.get(Calendar.DAY_OF_WEEK) != dayOfWeek) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
 
         return calendar
     }
-
 }

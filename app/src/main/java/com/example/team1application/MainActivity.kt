@@ -59,8 +59,6 @@ class MainActivity : ComponentActivity() {
                     }
 
 
-
-
                     // 1. AlarmInitializerをインスタンス化（ロジックの引き出し）
                     // applicationContext を渡し、Activityの寿命に依存しないようにする
                     alarmInitializer = AlarmInitializer(applicationContext)
@@ -79,6 +77,7 @@ class MainActivity : ComponentActivity() {
                         // ここで中身を出し分けるの！
                         if (isShowingTitle) {
                             TitleScreen(
+
                                 onTap = { isTitle = false },
                                 modifier = Modifier.padding(innerPadding)
                             )
@@ -87,6 +86,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.padding(innerPadding)
                             )
                         }
+
                     }
                 }
             }
