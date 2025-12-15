@@ -201,8 +201,10 @@ fun AlarmSettingListContent(
         // --- 基本設定 ---
         header("基本設定")
         item { AlarmTimeSettingItem(time = currentTime, onClick = onTimeClick) } // 時刻設定 (クリックで時刻ダイアログへ)
-        item { AlarmSimpleSettingItem("繰り返し", "繰り返さない") }
-        item { AlarmSimpleSettingItem("指定日の除外", "指定日を除外しない") }
+        item { AlarmSimpleSettingItem("繰り返し", "繰り返さない") } // 曜日指定、日付指定
+        item { AlarmSimpleSettingItem("スヌーズの間隔", "なし") } // ありにした場合項目が表示され
+        item { AlarmSimpleSettingItem("スヌーズ上限", "なし") } // ありにした場合に表示される項目
+                                                                            // 回数と時間のどちらかで指定
 
         // --- アラーム名 ---
         header("アラーム名")

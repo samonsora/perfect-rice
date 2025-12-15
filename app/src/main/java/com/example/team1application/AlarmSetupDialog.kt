@@ -103,7 +103,7 @@ fun AlarmSetupDialog(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = "新しいアラームを設定",
+                    text = "アラーム時刻の設定",
                     style = MaterialTheme.typography.headlineSmall
                 )
                 Spacer(modifier = Modifier.height(16.dp))
