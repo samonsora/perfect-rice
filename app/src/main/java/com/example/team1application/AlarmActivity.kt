@@ -1,5 +1,6 @@
 package com.example.team1application
-
+//AlarmActivity.kt
+import android.content.Intent
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -16,7 +17,6 @@ import androidx.compose.ui.unit.dp
 
 class AlarmActivity : ComponentActivity() {
 
-    private var player: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,37 +28,18 @@ class AlarmActivity : ComponentActivity() {
             )
         }
 
-        // アラーム音を鳴らす
-        startAlarm()
     }
 
-    /** アラーム音を鳴らす */
-    private fun startAlarm() {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
-        player = MediaPlayer().apply {
-            setDataSource(this@AlarmActivity, uri)
-            setAudioStreamType(AudioManager.STREAM_ALARM)
-            isLooping = true
-            prepare()
-            start()
-        }
-    }
 
     /** アラームを止めて画面を閉じる */
     private fun stopAlarmAndFinish() {
-        player?.stop()
-        player?.release()
-        player = null
+        stopService(Intent(this, AlarmService::class.java))
+
         finish()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        player?.stop()
-        player?.release()
-    }
+
+
 }
 
 @Composable

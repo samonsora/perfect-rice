@@ -8,20 +8,21 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
-        val i = Intent(context, AlarmActivity::class.java)
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val serviceIntent = Intent(context, AlarmService::class.java)
+        ContextCompat.startForegroundService(context, serviceIntent)
         /*
         * アプリ画面表示中はできる
         * しかし、スリープやスマホのホーム画面などの様に
-        * アプリ画面日出力の場合はできないっぽい。onCreateオーバーライドしてるのに。。。
+        * アプリ画面非出力の場合はできないっぽい。onCreateオーバーライドしてるのに。。。
         * アプリを落とした場合なんかもってのほか
          */
-        context.startActivity(i)
+
         
         Log.d("AlarmReceiver", "⏰ ID:$alarmId のアラームがトリガーされました！")
 
