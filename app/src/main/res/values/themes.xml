@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 
-    <resources xmlns:tools="http://schemas.android.com/tools">
-        <style name="Base.Theme.Team1Application" parent="Theme.Material3.DayNight.NoActionBar">
-        </style>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.Team1Application" parent="Theme.Material3.DayNight.NoActionBar">
+    </style>
 
-        <style name="Theme.Team1Application" parent="Base.Theme.Team1Application" />
-    </resources>
+    <style name="Theme.Team1Application" parent="Base.Theme.Team1Application" />
+</resources>
