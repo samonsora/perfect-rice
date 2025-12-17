@@ -24,7 +24,8 @@ class AlarmActivity : ComponentActivity() {
         // UI
         setContent {
             AlarmScreen(
-                onStopClick = { stopAlarmAndFinish() }
+                onStopClick = { stopAlarmAndFinish() },
+                onSnoozeClick = { snoozeAndFinish() }
             )
         }
 
@@ -38,6 +39,25 @@ class AlarmActivity : ComponentActivity() {
         finish()
     }
 
+    /** スヌーズ処理（5分後に再アラーム） */
+    private fun snoozeAndFinish() {
+
+        // 現在のアラームIDを取得（なければ -1）
+        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+
+        // スヌーズ用スケジューラを生成
+        val snoozeScheduler = SnoozeScheduler(this)
+
+        // 5分後に再アラームを設定
+        snoozeScheduler.scheduleSnooze(alarmId, 5)
+
+        // 現在鳴っている音を停止
+        stopService(Intent(this, AlarmService::class.java))
+
+        // 画面を閉じる
+        finish()
+    }
+
 
 
 }
@@ -45,6 +65,7 @@ class AlarmActivity : ComponentActivity() {
 @Composable
 fun AlarmScreen(
     onStopClick: () -> Unit,
+    onSnoozeClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -63,8 +84,8 @@ fun AlarmScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { /* スヌーズは後で実装 */ }) {
-            Text("スヌーズ（未実装）")
+        Button(onClick = onSnoozeClick) {
+            Text("スヌーズ")
         }
     }
 }

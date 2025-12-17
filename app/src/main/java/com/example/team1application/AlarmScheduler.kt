@@ -17,7 +17,8 @@ import java.util.Calendar
 fun getDummyAlarmSettings(): SnapshotStateList<AlarmSetting> {
     // SnapshotStateList にしてUIが再描画を検知できるようにする
     return listOf(
-        AlarmSetting(1, "05:51", "土, 日, 月, 火, 水, 木, 金", true)
+        AlarmSetting(1, "11:48", "土, 日, 月, 火, 水, 木, 金", true)
+        //AlarmSetting(2, "11:22", "土, 日, 月, 火, 水, 木, 金", true)
     ).toMutableStateList()
 }
 
