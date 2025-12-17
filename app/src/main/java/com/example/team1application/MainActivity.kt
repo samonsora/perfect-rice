@@ -25,9 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 
-// 💡 外部ファイルにある関数のインポートが必要な場合はここに追加してね
-// import com.example.team1application.util.isUsageAccessGranted
-// import com.example.team1application.util.requestUsageAccess
+
 
 class MainActivity : ComponentActivity() {
     private lateinit var alarmInitializer: AlarmInitializer
