@@ -1,29 +1,15 @@
 package com.example.team1application
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,14 +17,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
-import java.util.TimeZone
+import java.util.*
 
 // 1. 大元のホーム画面
 @Composable
@@ -47,18 +32,25 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { 5 }, initialPage = 2)
     val scope = rememberCoroutineScope()
 
-    // ✨✨ データ管理コードは全部消しました！スッキリ！ ✨✨
+    // 🌙 睡眠モードか食事モードかを管理する魔法のスイッチ（true = 睡眠, false = 食事）
+    var isSleepMode by remember { mutableStateOf(true) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar {
+                // 👇 ここを修正！アイコンも変数で切り替えるようにしたよ🍴
+                val leftLabel = if (isSleepMode) "睡眠記録" else "食事記録"
+                val leftIcon = if (isSleepMode) Icons.Default.Star else Icons.Default.Edit // 記録っぽいアイコン
+
+                val rightLabel = if (isSleepMode) "アラーム" else "食事入力"
+                // ✨ ここで Restaurant (カトラリー) を使う！
+                val rightIcon = if (isSleepMode) Icons.Default.Notifications else Icons.Default.Restaurant
+
                 val items = listOfNotNull(
-                    // BottomNavItem("食記録", Icons.Default.Restaurant, 0),
-                    BottomNavItem("睡眠記録", Icons.Default.Star, 1),
+                    BottomNavItem(leftLabel, leftIcon, 1),
                     BottomNavItem("ホーム", Icons.Default.Home, 2),
-                    BottomNavItem("アラーム", Icons.Default.Notifications, 3),
-                    // BottomNavItem("設定", Icons.Default.Settings, 4)
+                    BottomNavItem(rightLabel, rightIcon, 3),
                 )
 
                 items.forEach { item ->
@@ -76,22 +68,21 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
     ) { innerPadding ->
-        // ✨✨ ここを修正しました！ ✨✨
-        // innerPadding をそのまま使うと上にも隙間ができちゃうので、
-        // 「下（ナビゲーションバー）の分だけ」余白を開けるように変更しました！
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding())
         ) { page ->
+            // ✨ ここでモードによって出し分ける！
             when (page) {
-                //0 -> T.RirekiScreen()
-                1 -> RirekiScreen()
-                2 -> HomeMainContent()
-                3 -> AlarmScreen()
-                //4 -> SettingScreen()
-                else -> Text("準備中...")
+                1 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen() // 左画面
+                2 -> HomeMainContent(
+                    isSleepMode = isSleepMode,
+                    onModeChange = { isSleepMode = it }
+                )
+                3 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()   // 右画面
+                else -> Text("準備中...", modifier = Modifier.fillMaxSize(), color = Color.Gray)
             }
         }
     }
@@ -105,60 +96,53 @@ data class BottomNavItem(
 )
 
 // --------------------------------------------------
-// 🏠 ホーム画面の中身（時計とボタンだけ）
+// 🏠 ホーム画面の中身（時計とボタン）
 // --------------------------------------------------
 @Composable
-fun HomeMainContent() {
+fun HomeMainContent(
+    isSleepMode: Boolean,          // 今のモードを受け取る
+    onModeChange: (Boolean) -> Unit // モードを変えるためのスイッチ
+) {
     var timeString by remember { mutableStateOf("00:00") }
-
-    // 🖼️ 背景画像のIDを保存する魔法の箱
-    // 最初はとりあえずバナナを入れておくね（すぐに正しい画像に変わるよ）
     var currentBgImage by remember { mutableStateOf(R.drawable.banana) }
 
     LaunchedEffect(Unit) {
         while (isActive) {
             val calendar = Calendar.getInstance()
             calendar.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
-
-            // 時間の表示用
             val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
             formatter.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
             timeString = formatter.format(calendar.time)
 
-            // 🕰️ ここで「何時か」を調べて、画像を切り替える！
-            val hour = calendar.get(Calendar.HOUR_OF_DAY) // 24時間表記の「時」
-
+            val hour = calendar.get(Calendar.HOUR_OF_DAY)
             currentBgImage = when (hour) {
-                in 6..15 -> R.drawable.banana   // 6時 ～ 15時 (15:59まで)
-                in 16..18 -> R.drawable.tomato  // 16時 ～ 18時 (18:59まで)
-                else -> R.drawable.kabotyaneko      // 19時 ～ 5時 (それ以外の時間)
+                in 6..15 -> R.drawable.banana
+                in 16..18 -> R.drawable.tomato
+                else -> R.drawable.kabotyaneko // ※画像名は確認してね
             }
-
             delay(1000)
         }
     }
 
-    // 📦 背景と中身を重ねるために Box を使うよ！
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // 🖼️ 1. 背景画像（一番下に敷く！）
+        // 🖼️ 背景画像
         Image(
             painter = painterResource(id = currentBgImage),
             contentDescription = "時間帯背景",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop, // 画面いっぱいに埋める！
-            // 少し透明にして時計を見やすくする？（必要なら alpha = 0.5f とか入れてみて）
+            contentScale = ContentScale.Crop,
             alpha = 0.8f
         )
 
-        // 📝 2. 時計とボタン（背景の上に重ねる！）
+        // 📝 時計と操作パネル
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 🟥 上のエリア（時計）
+            // 🟥 時計エリア
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -169,9 +153,8 @@ fun HomeMainContent() {
                     text = timeString,
                     fontSize = 120.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White, // 背景があるから白文字の方が見やすいかも！
+                    color = Color.White,
                     lineHeight = 110.sp,
-                    // 文字に影をつけて読みやすくする魔法（オプション）
                     style = androidx.compose.ui.text.TextStyle(
                         shadow = androidx.compose.ui.graphics.Shadow(
                             color = Color.Black,
@@ -185,12 +168,92 @@ fun HomeMainContent() {
             Column(
                 modifier = Modifier
                     .weight(2f)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    // 👇 【変更点1】 下から 80dp くらいの場所に配置する設定！
+                    // 数字を大きくすると上に、小さくするともっと下にいくよ！
+                    .padding(bottom = 80.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                // 👇 【変更点2】 Center ではなく Bottom に変更！
+                verticalArrangement = Arrangement.Bottom
             ) {
 
+                // ✨ モード切り替えスイッチ
+                Row(
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 睡眠ボタン
+                    SwitchButton(
+                        text = "睡眠",
+                        isSelected = isSleepMode,
+                        onClick = { onModeChange(true) }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 食事ボタン
+                    SwitchButton(
+                        text = "食事",
+                        isSelected = !isSleepMode,
+                        onClick = { onModeChange(false) }
+                    )
+                }
+
+                // テキストもスイッチのすぐ下に置きたいなら、Spacerを小さくしてね
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = if(isSleepMode) "現在: 睡眠モード" else "現在: 食事モード",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = androidx.compose.ui.graphics.Shadow(
+                            color = Color.Black,
+                            blurRadius = 5f
+                        )
+                    )
+                )
             }
         }
     }
 }
+
+// ✨ おしゃれな切り替えボタンの部品
+@Composable
+fun SwitchButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) Color(0xFF6200EE) else Color.Transparent, // 選択時は紫、未選択は透明
+            contentColor = if (isSelected) Color.White else Color.Black
+        ),
+        elevation = if(isSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(0.dp),
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(text, fontWeight = FontWeight.Bold)
+    }
+}
+
+
+// --- 🚧 以下、仮の画面（まだ作ってない場合のダミー） ---
+
+@Composable
+fun FoodRecordScreen() {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
+        Text("左画面：食事記録（仮）", fontSize = 24.sp)
+    }
+}
+
+@Composable
+fun FoodInputScreen() {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFFFCC80)), contentAlignment = Alignment.Center) {
+        Text("右画面：食事入力（仮）", fontSize = 24.sp)
+    }
+}
+// 既存の RirekiScreen() や AlarmScreen() はそのまま使ってね！
