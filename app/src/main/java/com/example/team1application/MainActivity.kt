@@ -52,9 +52,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             // コンフリクト激戦区
             Team1ApplicationTheme {
-
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
                     var isTitle by remember { mutableStateOf(true) }
 
                     val alarmManager = getSystemService(AlarmManager::class.java)

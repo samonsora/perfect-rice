@@ -135,8 +135,9 @@ fun TimePickerWheel(
     val itemHeightPx = with(density) { itemHeight.toPx() }
 
     val listState = rememberLazyListState()
-    val slowDownFlingBehavior = rememberSlowDownFlingBehavior() // 👈 変更点：カスタム FlingBehavior を使用
+    val slowDownFlingBehavior = rememberSlowDownFlingBehavior()
 
+    // 初期スクロール完了状態を内部で持つ
     var isInitialScrollComplete by remember { mutableStateOf(false) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -146,8 +147,9 @@ fun TimePickerWheel(
         if (containerSize.height > 0) {
             coroutineScope.launch {
                 val offsetToCenter = (containerSize.height / 2f - itemHeightPx / 2f).toInt()
+                // 初回スクロールはアニメーションなしで行う
                 listState.scrollToItem(targetIndex, -offsetToCenter)
-                isInitialScrollComplete = true
+                isInitialScrollComplete = true // スクロール完了をマーク
             }
         }
     }
@@ -157,9 +159,6 @@ fun TimePickerWheel(
         if (!listState.isScrollInProgress && isInitialScrollComplete) {
             val containerCenterY = containerSize.height / 2f
 
-            // 修正点: minByOrNull のラムダ内での型推論の問題を回避するため、item?.let { } を使用するか、
-            // 処理が複雑な場合は minByOrNull ではなく minBy の使用を検討する
-            // 現在のコードでは問題なく動作するはずだが、念のため安全な呼び出しを使用
             val closestItem = listState.layoutInfo.visibleItemsInfo.minByOrNull { item ->
                 val itemCenterY = item.offset + item.size / 2f
                 abs(itemCenterY - containerCenterY)
@@ -175,7 +174,7 @@ fun TimePickerWheel(
 
     LazyColumn(
         state = listState,
-        flingBehavior = slowDownFlingBehavior, // 👈 変更点：カスタム FlingBehavior を適用
+        flingBehavior = slowDownFlingBehavior,
         modifier = Modifier
             .height(itemHeight * 3f)
             .width(40.dp)
@@ -209,7 +208,10 @@ fun TimePickerWheel(
 
                         this.scaleX = 1f + (MAX_SCALE_FACTOR - 1f) * centerFactor
                         this.scaleY = this.scaleX
-                        this.alpha = MIN_ALPHA + (1f - MIN_ALPHA) * centerFactor
+
+                        // 💡 修正点 2: 初期スクロールが完了するまで透明度を制御
+                        val finalAlpha = MIN_ALPHA + (1f - MIN_ALPHA) * centerFactor
+                        this.alpha = if (isInitialScrollComplete) finalAlpha else 0f
                     }
                     .clickable {
                         coroutineScope.launch {
@@ -222,8 +224,6 @@ fun TimePickerWheel(
         }
     }
 }
-
-//---
 
 /**
  * アラーム時刻のピッカーUIコンポーネント (TimePickerWheelを利用)

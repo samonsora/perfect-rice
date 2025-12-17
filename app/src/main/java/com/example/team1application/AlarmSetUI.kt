@@ -2,123 +2,137 @@ package com.example.team1application
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import kotlin.math.roundToInt
 
 /**
- * 詳細なアラーム設定画面の全体レイアウトを構築するComposable。
- *
- * @param onDismiss 「キャンセル」または「戻る」ボタンを押したときの処理
- * @param onSave 「完了」ボタンを押したときの処理 (この画面で設定を保存する)
- * @param onDelete 「削除」ボタンを押したときの処理
- * @param initialTime AlarmSetupDialogから渡される初期時刻 (例: "07:30")
+ * 詳細なアラーム設定画面
+ * @param existingAlarm 編集時は既存のデータを、新規時は null を渡します
  */
 @Composable
 fun AlarmSetUI(
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
+    onSave: (AlarmSetting) -> Unit,
     onDelete: () -> Unit,
-    initialTime: String
+    initialTime: String,
+    isNewAlarm: Boolean,
+    existingAlarm: AlarmSetting? = null // 💡 追加：未定義エラーを解消
 ) {
-    // 1. 画面で設定する時刻の状態を保持
+    // 1. 画面で設定する時刻の状態
     var alarmTime by remember { mutableStateOf(initialTime) }
-
-    // 2. 時刻設定ダイアログの表示状態
     var showTimeDialog by remember { mutableStateOf(false) }
 
-    // カラーテーマの取得
+    // 2. スヌーズの設定状態 (既存データがあればそれを初期値にする)
+    val snoozeIntervalOptions = listOf("なし", "5分", "10分", "15分", "30分")
+    val snoozeCountOptions = listOf("無制限", "1回", "2回", "3回", "4回", "5回")
+
+    var snoozeInterval by remember {
+        mutableStateOf(existingAlarm?.snoozeInterval ?: snoozeIntervalOptions[0])
+    }
+    var snoozeCount by remember {
+        mutableStateOf(existingAlarm?.snoozeCount ?: snoozeCountOptions[0])
+    }
+
+    // 3. 音量の設定状態
+    var alarmVolume by remember {
+        mutableFloatStateOf(existingAlarm?.volume ?: 0.5f)
+    }
+    var showVolumeDialog by remember { mutableStateOf(false) }
+
+    // カラーテーマの取得 (未定義エラー回避のためここで定義)
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val primaryColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
         topBar = {
-            // TopAppBar: 「< アラームの設定」
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .background(MaterialTheme.colorScheme.surface) // Surfaceカラーを使用
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 戻るボタン
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "戻る",
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = onSurfaceColor
                     )
                 }
                 Text(
                     text = "アラームの設定",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = onSurfaceColor
                 )
             }
         },
         bottomBar = {
-            // BottomBar: 削除、キャンセル、完了ボタン
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .background(MaterialTheme.colorScheme.surface) // Surfaceカラーを使用
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                // 削除ボタン
-                TextButton(
-                    onClick = onDelete,
-                    modifier = Modifier.weight(1f).height(48.dp)
-                ) {
-                    Text("削除", color = MaterialTheme.colorScheme.error)
+                if (!isNewAlarm) {
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("削除")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                } else {
+                    Spacer(modifier = Modifier.weight(1f).height(48.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
-                Spacer(Modifier.width(8.dp))
-                // キャンセルボタン
+
                 TextButton(
                     onClick = onDismiss,
-                    modifier = Modifier.weight(1f).height(48.dp)
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = onSurfaceColor
+                    )
                 ) {
-                    Text("キャンセル", color = onSurfaceColor)
+                    Text("キャンセル")
                 }
+
                 Spacer(Modifier.width(8.dp))
-                // 完了ボタン
+
                 Button(
-                    onClick = onSave,
+                    onClick = {
+                        // 💡 修正点：全ての入力値を一つの AlarmSetting としてまとめて親に渡す
+                        val result = AlarmSetting(
+                            id = existingAlarm?.id ?: -1, // 新規なら -1
+                            time = alarmTime,
+                            days = existingAlarm?.days ?: "繰り返さない",
+                            isActive = existingAlarm?.isActive ?: true,
+                            name = existingAlarm?.name ?: "指定なし",
+                            snoozeInterval = snoozeInterval,
+                            snoozeCount = snoozeCount,
+                            volume = alarmVolume,
+                            fadeIn = existingAlarm?.fadeIn ?: false
+                        )
+                        onSave(result)
+                    },
                     modifier = Modifier.weight(1f).height(48.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = primaryColor,
@@ -129,45 +143,68 @@ fun AlarmSetUI(
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.background // 画面全体の背景色
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        // 設定項目のリスト表示
         AlarmSettingListContent(
             modifier = Modifier.padding(paddingValues),
-            currentTime = alarmTime, // 更新された時刻を渡す
-            onTimeClick = {
-                // 3. 時刻クリック時にダイアログ表示を要求
-                showTimeDialog = true
-            }
+            currentTime = alarmTime,
+            onTimeClick = { showTimeDialog = true },
+            snoozeInterval = snoozeInterval,
+            onSnoozeIntervalChange = { newInterval ->
+                snoozeInterval = newInterval
+                if (newInterval == "なし") snoozeCount = snoozeCountOptions[0]
+            },
+            snoozeCount = snoozeCount,
+            onSnoozeCountChange = { snoozeCount = it },
+            snoozeIntervalOptions = snoozeIntervalOptions,
+            snoozeCountOptions = snoozeCountOptions,
+            alarmVolume = alarmVolume,
+            onVolumeClick = { showVolumeDialog = true }
         )
     }
 
-    // 4. showTimeDialog が true の場合、AlarmSetupDialog を表示
     if (showTimeDialog) {
         AlarmSetupDialog(
             onDismiss = { showTimeDialog = false },
             onSave = { newTime ->
-                alarmTime = newTime // 新しい時刻で状態を更新
-                showTimeDialog = false // ダイアログを閉じる
+                alarmTime = newTime
+                showTimeDialog = false
+            }
+        )
+    }
+
+    if (showVolumeDialog) {
+        AlarmVolumeDialog(
+            initialVolume = alarmVolume,
+            onDismiss = { showVolumeDialog = false },
+            onSave = { newVolume ->
+                alarmVolume = newVolume
+                showVolumeDialog = false
             }
         )
     }
 }
 
-/**
- * 設定項目のリストを構成するComposable (Scaffoldのコンテンツ部分)。
- */
+// --- 以下、既存の Composable 群 (変更なし) ---
+
 @Composable
 fun AlarmSettingListContent(
     modifier: Modifier = Modifier,
-    currentTime: String, // 表示する時刻
-    onTimeClick: () -> Unit // 時刻クリック時の処理
+    currentTime: String,
+    onTimeClick: () -> Unit,
+    snoozeInterval: String,
+    onSnoozeIntervalChange: (String) -> Unit,
+    snoozeCount: String,
+    onSnoozeCountChange: (String) -> Unit,
+    snoozeIntervalOptions: List<String>,
+    snoozeCountOptions: List<String>,
+    alarmVolume: Float,
+    onVolumeClick: () -> Unit
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        // ヘッダー表示用のローカル関数
         fun header(text: String) = item {
             Text(
                 text = text,
@@ -177,175 +214,138 @@ fun AlarmSettingListContent(
             )
         }
 
-        // --- 基本設定 ---
         header("基本設定")
-        item { AlarmTimeSettingItem(time = currentTime, onClick = onTimeClick) } // 時刻設定 (クリックで時刻ダイアログへ)
+        item { AlarmTimeSettingItem(time = currentTime, onClick = onTimeClick) }
         item { AlarmSimpleSettingItem("繰り返し", "繰り返さない") }
-        item { AlarmSimpleSettingItem("指定日の除外", "指定日を除外しない") }
+        item {
+            AlarmDropdownSettingItem(
+                title = "スヌーズの間隔",
+                selectedValue = snoozeInterval,
+                options = snoozeIntervalOptions,
+                onValueChange = onSnoozeIntervalChange
+            )
+        }
 
-        // --- アラーム名 ---
+        if (snoozeInterval != "なし") {
+            item {
+                AlarmDropdownSettingItem(
+                    title = "スヌーズの回数",
+                    selectedValue = snoozeCount,
+                    options = snoozeCountOptions,
+                    onValueChange = onSnoozeCountChange
+                )
+            }
+        }
+
         header("アラーム名")
         item { AlarmSimpleSettingItem("アラーム名", "指定なし") }
 
-        // --- アラーム音の設定 ---
         header("アラーム音の設定")
         item { AlarmSimpleSettingItem("アラーム音", "デフォルト") }
-        item { AlarmVolumeSettingItem(volume = "50%") } // 音量
-        item { AlarmSwitchSettingItem("フェードイン", "音量を徐々に大きくする") } // スイッチ付き
+        item {
+            AlarmVolumeSettingItem(
+                volume = alarmVolume,
+                onClick = onVolumeClick
+            )
+        }
+        item { AlarmSwitchSettingItem("フェードイン", "音量を徐々に大きくする") }
     }
 }
 
-/**
- * 汎用的な設定項目行（タイトルとサブタイトルのみ）。
- */
 @Composable
-fun AlarmSimpleSettingItem(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit = {}
-) {
+fun AlarmSimpleSettingItem(title: String, subtitle: String, onClick: () -> Unit = {}) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = subtitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text(text = title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+            Text(text = subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
-    // 区切り線
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/**
- * 時刻設定項目 (時刻を大きく表示し、クリック可能)。
- */
 @Composable
-fun AlarmTimeSettingItem(
-    time: String,
-    onClick: () -> Unit = {} // クリック処理
-) {
+fun AlarmDropdownSettingItem(title: String, selectedValue: String, options: List<String>, onValueChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = { expanded = true }).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+            Text(text = selectedValue, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyLarge)
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option ->
+                    DropdownMenuItem(text = { Text(option) }, onClick = { onValueChange(option); expanded = false })
+                }
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+@Composable
+fun AlarmTimeSettingItem(time: String, onClick: () -> Unit = {}) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 72.dp)
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick) // クリック可能
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 72.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(
-                text = "時刻",
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = time,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 32.sp, // 時刻を大きく表示
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = "時刻", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+            Text(text = time, color = MaterialTheme.colorScheme.onSurface, fontSize = 32.sp, fontWeight = FontWeight.Bold)
         }
     }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/**
- * 音量設定項目 (音量表示のみ、スライダーは省略)。
- */
 @Composable
-fun AlarmVolumeSettingItem(volume: String) {
+fun AlarmVolumeSettingItem(volume: Float, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "音量",
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge
-        )
-        // 音量スライダーの代用テキスト
-        Text(
-            text = volume,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Text(text = "最大音量", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+        Text(text = "${(volume * 100).roundToInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
     }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/**
- * スイッチ付きの設定項目。
- */
 @Composable
-fun AlarmSwitchSettingItem(
-    title: String,
-    subtitle: String,
-) {
-    var checked by remember { mutableStateOf(false) } // ダミーのステート
+fun AlarmSwitchSettingItem(title: String, subtitle: String) {
+    var checked by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = subtitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text(text = title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+            Text(text = subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = { checked = it },
-            colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
-        )
+        Switch(checked = checked, onCheckedChange = { checked = it })
     }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+@Composable
+fun AlarmVolumeDialog(initialVolume: Float, onDismiss: () -> Unit, onSave: (Float) -> Unit) {
+    var currentVolume by remember { mutableFloatStateOf(initialVolume) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "最大音量を設定", style = MaterialTheme.typography.titleLarge)
+                Text(text = "${(currentVolume * 100).roundToInt()}%", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+                Slider(value = currentVolume, onValueChange = { currentVolume = it }, valueRange = 0f..1f)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("キャンセル") }
+                    Button(onClick = { onSave(currentVolume) }) { Text("完了") }
+                }
+            }
+        }
+    }
 }
