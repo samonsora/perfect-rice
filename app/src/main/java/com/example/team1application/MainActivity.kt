@@ -1,84 +1,72 @@
 package com.example.team1application
 
-import android.provider.Settings
+import android.Manifest
 import android.app.AlarmManager
 import android.content.Intent
-import android.media.audiofx.EnvironmentalReverb
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-
+import androidx.core.content.ContextCompat
 import com.example.team1application.ui.theme.Team1ApplicationTheme
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
-import java.time.Clock
 
-// 権限ヘルパー関数はcom.example.team1applicationパッケージ内にあると仮定
 
 
 class MainActivity : ComponentActivity() {
     private lateinit var alarmInitializer: AlarmInitializer
 
-    //  今後このoncleate多分消えてなくなるからどっかに避難
-    @RequiresApi(Build.VERSION_CODES.S)
-    private var currentTextSize: Float = 16f
+    // 🔔 通知許可をリクエストするための魔法のランチャー
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // 許可されたら、すぐに次のチェック（アラームなど）に進むためにonResumeのような処理をしてもいいけど
+            // 基本的には何もしなくても、次の起動やonResumeで自然にチェックされるよ
+        }
+    }
 
-
-    // 💡 onCreate は画面表示の初期化に専念させる
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // 1. AlarmInitializerをインスタンス化
+        alarmInitializer = AlarmInitializer(applicationContext)
+        // 2. 本機能の初期設定を実行
+        alarmInitializer.initializeAlarms()
+
+        // 🔔 アプリ起動時に、通知許可が必要なら聞く（Android 13以上）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         setContent {
-            // コンフリクト激戦区
             Team1ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var isTitle by remember { mutableStateOf(true) }
 
-                    val alarmManager = getSystemService(AlarmManager::class.java)
-                    if (!alarmManager.canScheduleExactAlarms()) {
-                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-                    }
-
-
-
-
-                    // 1. AlarmInitializerをインスタンス化（ロジックの引き出し）
-                    // applicationContext を渡し、Activityの寿命に依存しないようにする
-                    alarmInitializer = AlarmInitializer(applicationContext)
-
-                    // 2. 本機能の初期設定を実行
-                    alarmInitializer.initializeAlarms()
-
-                    // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
+                    // ✨✨ 画面切り替えのアニメーション ✨✨
                     Crossfade(
-                        targetState = isTitle, // このスイッチを見張るよ！
+                        targetState = isTitle,
                         label = "画面切り替え",
-                        // 👇 魔法にかける時間（ミリ秒）。1000 = 1秒。
                         animationSpec = tween(durationMillis = 700)
                     ) { isShowingTitle ->
-
-                        // ここで中身を出し分けるの！
                         if (isShowingTitle) {
                             TitleScreen(
                                 onTap = { isTitle = false },
@@ -95,28 +83,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 🚨 修正点 1: 権限チェックメソッドをクラス直下に移動 🚨
-    // 画面に戻ってきたときに権限チェックを再実行するため onResume() に配置するのが適切
-
+    // 🚨 ここに全ての権限チェックを集約！ 🚨
+    // 画面が表示されるたびに、上から順番に「まだ足りない権限はないかな？」って確認するよ
     override fun onResume() {
         super.onResume()
-
-        // 権限チェックと要求のロジックを実行
-        checkUsageAccessPermission()
+        checkAllPermissionsSequence()
     }
 
     /**
-     * 使用状況アクセス権限をチェックし、許可されていなければ設定画面へ誘導します。
-     * このメソッドは MainActivity クラスの直下に定義する必要があります。
+     * 権限を順番にチェックするメソッド。
+     * 同時に複数の設定画面を開かないように、if-else if で繋いでいるのがポイント！
      */
-    private fun checkUsageAccessPermission() {
-        // 権限チェック
-        if (!isUsageAccessGranted(this)) {
-            // 権限がなければ設定画面へ誘導
-            requestUsageAccess(this)
+    private fun checkAllPermissionsSequence() {
+        // 1. まずは正確なアラーム（Android 12以上）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(AlarmManager::class.java)
+            if (!alarmManager.canScheduleExactAlarms()) {
+                // 許可がない場合、アラーム設定画面へGo！
+                // ここで return することで、下の処理（使用状況チェック）は一時停止するよ
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                startActivity(intent)
+                return
+            }
         }
-        // 権限があれば、SleepReminder が Worker をスケジュール済み
+
+        // 2. アラームがOKなら、次は使用状況アクセス権限
+        if (!isUsageAccessGranted(this)) {
+            // 許可がない場合、使用状況設定画面へGo！
+            requestUsageAccess(this)
+            return
+        }
     }
 }
-// 💡 注意: isUsageAccessGranted と requestUsageAccess の定義は、
-// このファイルの外側 (同じパッケージの別の .kt ファイル) にある必要があります。
