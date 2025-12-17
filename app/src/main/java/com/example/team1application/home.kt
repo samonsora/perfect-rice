@@ -29,7 +29,7 @@ import java.util.*
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     // 📖 ページ設定
-    val pagerState = rememberPagerState(pageCount = { 5 }, initialPage = 2)
+    val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 1)
     val scope = rememberCoroutineScope()
 
     // 🌙 睡眠モードか食事モードかを管理する魔法のスイッチ（true = 睡眠, false = 食事）
@@ -48,9 +48,9 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 val rightIcon = if (isSleepMode) Icons.Default.Notifications else Icons.Default.Restaurant
 
                 val items = listOfNotNull(
-                    BottomNavItem(leftLabel, leftIcon, 1),
-                    BottomNavItem("ホーム", Icons.Default.Home, 2),
-                    BottomNavItem(rightLabel, rightIcon, 3),
+                    BottomNavItem(leftLabel, leftIcon, 0),
+                    BottomNavItem("ホーム", Icons.Default.Home, 1),
+                    BottomNavItem(rightLabel, rightIcon, 2),
                 )
 
                 items.forEach { item ->
@@ -76,12 +76,14 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         ) { page ->
             // ✨ ここでモードによって出し分ける！
             when (page) {
-                1 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen() // 左画面
-                2 -> HomeMainContent(
+                0 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen()
+                1 -> HomeMainContent(
                     isSleepMode = isSleepMode,
                     onModeChange = { isSleepMode = it }
                 )
-                3 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()   // 右画面
+                // 左画面
+                2 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()
+                //3 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()   // 右画面
                 else -> Text("準備中...", modifier = Modifier.fillMaxSize(), color = Color.Gray)
             }
         }
@@ -118,7 +120,7 @@ fun HomeMainContent(
             currentBgImage = when (hour) {
                 in 6..15 -> R.drawable.banana
                 in 16..18 -> R.drawable.tomato
-                else -> R.drawable.kabotyaneko // ※画像名は確認してね
+                else -> R.drawable.kabotyaneko
             }
             delay(1000)
         }
@@ -173,7 +175,6 @@ fun HomeMainContent(
                     // 数字を大きくすると上に、小さくするともっと下にいくよ！
                     .padding(bottom = 80.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                // 👇 【変更点2】 Center ではなく Bottom に変更！
                 verticalArrangement = Arrangement.Bottom
             ) {
 
