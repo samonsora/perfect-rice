@@ -11,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.team1application.ui.theme.Team1ApplicationTheme
-
 
 
 class MainActivity : ComponentActivity() {
@@ -62,6 +60,20 @@ class MainActivity : ComponentActivity() {
                     var isTitle by remember { mutableStateOf(true) }
 
                     // ✨✨ 画面切り替えのアニメーション ✨✨
+                    val alarmManager = getSystemService(AlarmManager::class.java)
+                    if (!alarmManager.canScheduleExactAlarms()) {
+                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                    }
+
+
+                    // 1. AlarmInitializerをインスタンス化（ロジックの引き出し）
+                    // applicationContext を渡し、Activityの寿命に依存しないようにする
+                    alarmInitializer = AlarmInitializer(applicationContext)
+
+                    // 2. 本機能の初期設定を実行
+                    alarmInitializer.initializeAlarms()
+
+                    // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
                     Crossfade(
                         targetState = isTitle,
                         label = "画面切り替え",
