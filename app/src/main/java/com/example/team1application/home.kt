@@ -32,59 +32,64 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 1)
     val scope = rememberCoroutineScope()
 
-    // 🌙 睡眠モードか食事モードかを管理する魔法のスイッチ（true = 睡眠, false = 食事）
+    // 🌙 睡眠モードか食事モードか
     var isSleepMode by remember { mutableStateOf(true) }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        bottomBar = {
-            NavigationBar {
-                // 👇 ここを修正！アイコンも変数で切り替えるようにしたよ🍴
-                val leftLabel = if (isSleepMode) "睡眠記録" else "食事記録"
-                val leftIcon = if (isSleepMode) Icons.Default.Star else Icons.Default.Edit // 記録っぽいアイコン
+    // ⚙️ 設定画面を開いているかどうか（true = 設定画面, false = ホーム画面）
+    var isSettingsOpen by remember { mutableStateOf(false) }
 
-                val rightLabel = if (isSleepMode) "アラーム" else "食事入力"
-                // ✨ ここで Restaurant (カトラリー) を使う！
-                val rightIcon = if (isSleepMode) Icons.Default.Notifications else Icons.Default.Restaurant
+    // ✨ 設定画面が開いていたら、そっちを表示！
+    if (isSettingsOpen) {
+        // 設定画面（戻るボタンを押したら isSettingsOpen を false にする）
+        SettingsScreen(onBack = { isSettingsOpen = false })
+    } else {
+        // いつものホーム画面
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            bottomBar = {
+                // ... (NavigationBarの中身は変更なし！) ...
+                NavigationBar {
+                    val leftLabel = if (isSleepMode) "睡眠記録" else "食事記録"
+                    val leftIcon = if (isSleepMode) Icons.Default.Star else Icons.Default.Edit
+                    val rightLabel = if (isSleepMode) "アラーム" else "食事入力"
+                    val rightIcon = if (isSleepMode) Icons.Default.Notifications else Icons.Default.Restaurant
 
-                val items = listOfNotNull(
-                    BottomNavItem(leftLabel, leftIcon, 0),
-                    BottomNavItem("ホーム", Icons.Default.Home, 1),
-                    BottomNavItem(rightLabel, rightIcon, 2),
-                )
-
-                items.forEach { item ->
-                    NavigationBarItem(
-                        selected = pagerState.currentPage == item.page,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(item.page)
-                            }
-                        },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) }
+                    val items = listOfNotNull(
+                        BottomNavItem(leftLabel, leftIcon, 0),
+                        BottomNavItem("ホーム", Icons.Default.Home, 1),
+                        BottomNavItem(rightLabel, rightIcon, 2),
                     )
+
+                    items.forEach { item ->
+                        NavigationBarItem(
+                            selected = pagerState.currentPage == item.page,
+                            onClick = {
+                                scope.launch { pagerState.animateScrollToPage(item.page) }
+                            },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) }
+                        )
+                    }
                 }
             }
-        }
-    ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding())
-        ) { page ->
-            // ✨ ここでモードによって出し分ける！
-            when (page) {
-                0 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen()
-                1 -> HomeMainContent(
-                    isSleepMode = isSleepMode,
-                    onModeChange = { isSleepMode = it }
-                )
-                // 左画面
-                2 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()
-                //3 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()   // 右画面
-                else -> Text("準備中...", modifier = Modifier.fillMaxSize(), color = Color.Gray)
+        ) { innerPadding ->
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+            ) { page ->
+                when (page) {
+                    0 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen()
+                    // 👇 ここ！設定ボタンを押した時の処理（onSettingsClick）を渡すよ！
+                    1 -> HomeMainContent(
+                        isSleepMode = isSleepMode,
+                        onModeChange = { isSleepMode = it },
+                        onSettingsClick = { isSettingsOpen = true }
+                    )
+                    2 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()
+                    else -> Text("準備中...", modifier = Modifier.fillMaxSize(), color = Color.Gray)
+                }
             }
         }
     }
@@ -102,13 +107,16 @@ data class BottomNavItem(
 // --------------------------------------------------
 @Composable
 fun HomeMainContent(
-    isSleepMode: Boolean,          // 今のモードを受け取る
-    onModeChange: (Boolean) -> Unit // モードを変えるためのスイッチ
+    isSleepMode: Boolean,
+    onModeChange: (Boolean) -> Unit,
+    onSettingsClick: () -> Unit // 👈 これを追加！（設定ボタンが押されたら知らせる）
 ) {
+    // ... (時計や画像の変数はそのまま) ...
     var timeString by remember { mutableStateOf("00:00") }
     var currentBgImage by remember { mutableStateOf(R.drawable.banana) }
 
     LaunchedEffect(Unit) {
+        // ... (時計のロジックはそのまま) ...
         while (isActive) {
             val calendar = Calendar.getInstance()
             calendar.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
@@ -130,7 +138,7 @@ fun HomeMainContent(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // 🖼️ 背景画像
+        // 🖼️ 背景画像 (そのまま)
         Image(
             painter = painterResource(id = currentBgImage),
             contentDescription = "時間帯背景",
@@ -139,16 +147,15 @@ fun HomeMainContent(
             alpha = 0.8f
         )
 
-        // 📝 時計と操作パネル
+        // 📝 時計と操作パネル (そのまま)
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // ... (時計エリアとボタンエリアのコードはそのまま変更なし！) ...
             // 🟥 時計エリア
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -159,8 +166,7 @@ fun HomeMainContent(
                     lineHeight = 110.sp,
                     style = androidx.compose.ui.text.TextStyle(
                         shadow = androidx.compose.ui.graphics.Shadow(
-                            color = Color.Black,
-                            blurRadius = 10f
+                            color = Color.Black, blurRadius = 10f
                         )
                     )
                 )
@@ -171,52 +177,45 @@ fun HomeMainContent(
                 modifier = Modifier
                     .weight(2f)
                     .fillMaxSize()
-                    // 👇 【変更点1】 下から 80dp くらいの場所に配置する設定！
-                    // 数字を大きくすると上に、小さくするともっと下にいくよ！
                     .padding(bottom = 80.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom
             ) {
-
-                // ✨ モード切り替えスイッチ
+                // モード切り替えスイッチ (そのまま)
                 Row(
                     modifier = Modifier
                         .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(50))
                         .padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 睡眠ボタン
-                    SwitchButton(
-                        text = "睡眠",
-                        isSelected = isSleepMode,
-                        onClick = { onModeChange(true) }
-                    )
-
+                    SwitchButton(text = "睡眠", isSelected = isSleepMode, onClick = { onModeChange(true) })
                     Spacer(modifier = Modifier.width(8.dp))
-
-                    // 食事ボタン
-                    SwitchButton(
-                        text = "食事",
-                        isSelected = !isSleepMode,
-                        onClick = { onModeChange(false) }
-                    )
+                    SwitchButton(text = "食事", isSelected = !isSleepMode, onClick = { onModeChange(false) })
                 }
-
-                // テキストもスイッチのすぐ下に置きたいなら、Spacerを小さくしてね
                 Spacer(modifier = Modifier.height(16.dp))
-
                 Text(
                     text = if(isSleepMode) "現在: 睡眠モード" else "現在: 食事モード",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     style = androidx.compose.ui.text.TextStyle(
-                        shadow = androidx.compose.ui.graphics.Shadow(
-                            color = Color.Black,
-                            blurRadius = 5f
-                        )
+                        shadow = androidx.compose.ui.graphics.Shadow(color = Color.Black, blurRadius = 5f)
                     )
                 )
             }
+        }
+
+        // ✨✨✨ ここに設定ボタンを追加！ ✨✨✨
+        // Boxの機能を使って「右下」に配置するよ！
+        FloatingActionButton(
+            onClick = onSettingsClick,
+            modifier = Modifier
+                .align(Alignment.BottomEnd) // 右下に配置
+                .padding(24.dp)             // 端っこすぎないように余白
+                .size(56.dp),               // 標準的なサイズ
+            containerColor = Color.White.copy(alpha = 0.9f), // 少し透け感のある白
+            contentColor = Color.Black
+        ) {
+            Icon(Icons.Default.Settings, contentDescription = "設定画面へ")
         }
     }
 }
@@ -243,6 +242,7 @@ fun SwitchButton(
 
 
 // --- 🚧 以下、仮の画面（まだ作ってない場合のダミー） ---
+//のちに削除
 
 @Composable
 fun FoodRecordScreen() {
