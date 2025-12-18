@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +33,12 @@ fun AlarmSetUI(
 ) {
     // --- 状態管理 ---
     var alarmTime by remember { mutableStateOf(initialTime) }
-    var alarmName by remember { mutableStateOf(existingAlarm?.name ?: "指定なし") }
+    var alarmName by remember { mutableStateOf(existingAlarm?.name ?: "") } // "指定なし"を空に変更
     var alarmVolume by remember { mutableFloatStateOf(existingAlarm?.volume ?: 0.5f) }
     var isFadeInEnabled by remember { mutableStateOf(existingAlarm?.fadeIn ?: false) }
+
+    // 繰り返しの状態 (既存の "月,火" などの文字列を保持)
+    var alarmDays by remember { mutableStateOf(existingAlarm?.days ?: "") }
 
     val snoozeIntervalOptions = listOf("なし", "5分", "10分", "15分", "30分")
     val snoozeCountOptions = listOf("無制限", "1回", "2回", "3回", "4回", "5回")
@@ -43,6 +49,7 @@ fun AlarmSetUI(
     var showTimeDialog by remember { mutableStateOf(false) }
     var showVolumeDialog by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
+    var showRepeatDialog by remember { mutableStateOf(false) } // 繰り返し用
 
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -89,7 +96,7 @@ fun AlarmSetUI(
                         val result = AlarmSetting(
                             id = existingAlarm?.id ?: -1,
                             time = alarmTime,
-                            days = existingAlarm?.days ?: "繰り返さない",
+                            days = alarmDays,
                             isActive = existingAlarm?.isActive ?: true,
                             name = alarmName,
                             snoozeInterval = snoozeInterval,
@@ -111,6 +118,8 @@ fun AlarmSetUI(
             onTimeClick = { showTimeDialog = true },
             alarmName = alarmName,
             onNameClick = { showNameDialog = true },
+            alarmDays = alarmDays,
+            onRepeatClick = { showRepeatDialog = true },
             snoozeInterval = snoozeInterval,
             onSnoozeIntervalChange = { newInterval ->
                 snoozeInterval = newInterval
@@ -122,10 +131,12 @@ fun AlarmSetUI(
             snoozeCountOptions = snoozeCountOptions,
             alarmVolume = alarmVolume,
             onVolumeClick = { showVolumeDialog = true },
-            isFadeInEnabled = isFadeInEnabled, // 💡 パラメーターを渡す
-            onFadeInChange = { isFadeInEnabled = it } // 💡 パラメーターを渡す
+            isFadeInEnabled = isFadeInEnabled,
+            onFadeInChange = { isFadeInEnabled = it }
         )
     }
+
+    // --- ダイアログ集 ---
 
     if (showTimeDialog) {
         AlarmSetupDialog(onDismiss = { showTimeDialog = false }, onSave = { alarmTime = it; showTimeDialog = false })
@@ -137,6 +148,17 @@ fun AlarmSetUI(
 
     if (showNameDialog) {
         AlarmNameEditDialog(initialName = alarmName, onDismiss = { showNameDialog = false }, onSave = { alarmName = it; showNameDialog = false })
+    }
+
+    if (showRepeatDialog) {
+        AlarmRepeatDialog(
+            initialDays = alarmDays,
+            onDismiss = { showRepeatDialog = false },
+            onSave = { selectedDays ->
+                alarmDays = selectedDays
+                showRepeatDialog = false
+            }
+        )
     }
 }
 
@@ -150,6 +172,8 @@ fun AlarmSettingListContent(
     onTimeClick: () -> Unit,
     alarmName: String,
     onNameClick: () -> Unit,
+    alarmDays: String,
+    onRepeatClick: () -> Unit,
     snoozeInterval: String,
     onSnoozeIntervalChange: (String) -> Unit,
     snoozeCount: String,
@@ -158,8 +182,8 @@ fun AlarmSettingListContent(
     snoozeCountOptions: List<String>,
     alarmVolume: Float,
     onVolumeClick: () -> Unit,
-    isFadeInEnabled: Boolean, // 💡 使用する
-    onFadeInChange: (Boolean) -> Unit // 💡 使用する
+    isFadeInEnabled: Boolean,
+    onFadeInChange: (Boolean) -> Unit
 ) {
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
         fun header(text: String) = item {
@@ -168,26 +192,123 @@ fun AlarmSettingListContent(
 
         header("基本設定")
         item { AlarmTimeSettingItem(time = currentTime, onClick = onTimeClick) }
-        item { AlarmSimpleSettingItem("繰り返し", "繰り返さない") }
+        item {
+            AlarmSimpleSettingItem(
+                title = "繰り返し",
+                subtitle = alarmDays.ifBlank { "毎日" },
+                onClick = onRepeatClick
+            )
+        }
         item { AlarmDropdownSettingItem("スヌーズの間隔", snoozeInterval, snoozeIntervalOptions, onSnoozeIntervalChange) }
         if (snoozeInterval != "なし") {
             item { AlarmDropdownSettingItem("スヌーズの回数", snoozeCount, snoozeCountOptions, onSnoozeCountChange) }
         }
 
         header("アラーム名")
-        item { AlarmSimpleSettingItem("アラーム名", alarmName, onClick = onNameClick) }
+        item { AlarmSimpleSettingItem("アラーム名", alarmName.ifBlank { "指定なし" }, onClick = onNameClick) }
 
         header("アラーム音の設定")
         item { AlarmSimpleSettingItem("アラーム音", "デフォルト") }
         item { AlarmVolumeSettingItem(volume = alarmVolume, onClick = onVolumeClick) }
         item {
-            // 💡 修正：渡された状態とコールバックを SwitchItem に適用
             AlarmSwitchSettingItem(
                 title = "フェードイン",
                 subtitle = "音量を徐々に大きくする",
                 checked = isFadeInEnabled,
                 onCheckedChange = onFadeInChange
             )
+        }
+    }
+}
+
+/**
+ * 繰り返し設定ダイアログ
+ */
+@Composable
+fun AlarmRepeatDialog(
+    initialDays: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    val dayOptions = listOf("月", "火", "水", "木", "金", "土", "日")
+
+    // 現在選択されている曜日をセットに変換
+    val initialSelected = if (initialDays == "毎日" || initialDays.isBlank()) {
+        emptySet<String>()
+    } else {
+        initialDays.split(",").toSet()
+    }
+
+    var selectedDays by remember { mutableStateOf(initialSelected) }
+    var repeatMode by remember { mutableStateOf(if (initialDays == "毎日" || initialDays.isBlank()) "毎日" else "曜日指定") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text("繰り返し", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(16.dp))
+
+                // モード選択（毎日 vs 曜日指定）
+                Column(Modifier.selectableGroup()) {
+                    listOf("毎日", "曜日指定").forEach { text ->
+                        Row(
+                            Modifier.fillMaxWidth().height(48.dp)
+                                .selectable(
+                                    selected = (text == repeatMode),
+                                    onClick = { repeatMode = text },
+                                    role = Role.RadioButton
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = (text == repeatMode), onClick = null)
+                            Text(text = text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
+                        }
+                    }
+                }
+
+                // 曜日選択（「曜日指定」が選ばれているときのみ表示）
+                if (repeatMode == "曜日指定") {
+                    Spacer(Modifier.height(8.dp))
+                    Column {
+                        dayOptions.forEach { day ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().height(40.dp)
+                                    .clickable {
+                                        selectedDays = if (selectedDays.contains(day)) {
+                                            selectedDays - day
+                                        } else {
+                                            selectedDays + day
+                                        }
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = selectedDays.contains(day),
+                                    onCheckedChange = null
+                                )
+                                Text(text = "${day}曜日", modifier = Modifier.padding(start = 16.dp))
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("キャンセル") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (repeatMode == "毎日") {
+                                onSave("") // 空文字を保存（UI側で毎日と解釈）
+                            } else {
+                                // 選択された曜日を 月,火,水 の形式で並び替えて保存
+                                val sortedResult = dayOptions.filter { selectedDays.contains(it) }.joinToString(",")
+                                onSave(sortedResult.ifBlank { "" }) // 何も選んでなければ空＝毎日
+                            }
+                        }
+                    ) { Text("OK") }
+                }
+            }
         }
     }
 }
@@ -201,7 +322,7 @@ fun AlarmNameEditDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
-    var text by remember { mutableStateOf(if (initialName == "指定なし") "" else initialName) }
+    var text by remember { mutableStateOf(initialName) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -219,7 +340,7 @@ fun AlarmNameEditDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("キャンセル") }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onSave(text.ifBlank { "指定なし" }) }) { Text("OK") }
+                    Button(onClick = { onSave(text) }) { Text("OK") }
                 }
             }
         }
@@ -229,12 +350,7 @@ fun AlarmNameEditDialog(
 // --- 補助的なUIパーツ ---
 
 @Composable
-fun AlarmSwitchSettingItem(
-    title: String,
-    subtitle: String,
-    checked: Boolean, // 💡 外部から状態を受け取る
-    onCheckedChange: (Boolean) -> Unit // 💡 外部へイベントを通知
-) {
+fun AlarmSwitchSettingItem(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)

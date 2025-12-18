@@ -125,36 +125,47 @@ fun AlarmSettingCard(
     alarm: AlarmSetting,
     onToggleActive: (Int, Boolean) -> Unit,
     onDeleteAlarm: (Int) -> Unit,
-    onEditAlarm: (Int) -> Unit, // 💡 修正点 4: 編集開始コールバック
+    onEditAlarm: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // 💡 修正点 5: カードのゴミ箱とスイッチを除く部分に clickable を適用
-                // ただし、Row全体に clickable を適用し、内部の操作ボタンに干渉しないように制御する
                 .clickable { onEditAlarm(alarm.id) }
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左側の情報 (時刻と曜日) - クリック可能な領域
+            // 左側の情報 (名前・時刻・曜日)
             Column(modifier = Modifier.weight(1f)) {
+                // 💡 名前が空でない場合のみ表示
+                if (alarm.name.isNotBlank()) {
+                    Text(
+                        text = alarm.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+
                 Text(
                     text = alarm.time,
                     style = MaterialTheme.typography.displaySmall
                 )
-                Text(
-                    text = alarm.days,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                // 💡 曜日が空でない場合のみ表示（空なら何も表示しない）
+                if (alarm.days.isNotBlank()) {
+                    Text(
+                        text = alarm.days,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            // 右側の操作ボタンとスイッチ (clickableの対象外)
+            // 右側の操作ボタンとスイッチ
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 削除ボタン
                 IconButton(
                     onClick = { onDeleteAlarm(alarm.id) },
                 ) {
@@ -166,7 +177,6 @@ fun AlarmSettingCard(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // アクティブ/非アクティブを切り替えるスイッチ
                 Switch(
                     checked = alarm.isActive,
                     onCheckedChange = { newState ->
