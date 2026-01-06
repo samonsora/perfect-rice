@@ -1,5 +1,5 @@
 package com.example.team1application
-//AlarmActivity.kt
+
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -22,16 +22,22 @@ class AlarmActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
-        val currentSnoozeCount = intent.getIntExtra("CURRENT_SNOOZE_COUNT", 0)
 
+        // 1. 設定ファイルをロード
         val allAlarms = AlarmDataStore.loadAlarms(this)
         val currentSetting = allAlarms.find { it.id == alarmId }
 
-        // 💡 修正ポイント：拡張プロパティを使用して正しく取得
+        // 2. 最大回数や無制限フラグを取得
         val maxSnoozeCount = currentSetting?.snoozeCountInt ?: 0
         val isUnlimited = currentSetting?.isSnoozeUnlimited ?: false
+
+        // 3. スヌーズの間隔を取得 (例: "5分" -> 5)
+        // 文字列から"分"を除去して数値に変換する処理をここで行います
         val snoozeIntervalStr = currentSetting?.snoozeInterval?.replace("分", "") ?: "5"
         val snoozeInterval = snoozeIntervalStr.toIntOrNull() ?: 5
+
+        // 4. 現在の回数を Intent から取得
+        val currentSnoozeCount = intent.getIntExtra("CURRENT_SNOOZE_COUNT", 0)
 
         setContent {
             AlarmScreen(

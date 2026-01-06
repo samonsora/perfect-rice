@@ -3,13 +3,35 @@ package com.example.team1application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.media.AudioManager
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.util.Log
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 
+
+class AlarmReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        // 1. Intent から ID と現在のスヌーズ回数を受け取る
+        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+        val currentSnoozeCount = intent.getIntExtra("CURRENT_SNOOZE_COUNT", 0)
+
+        Log.d("AlarmReceiver", "⏰ ID:$alarmId (スヌーズ回数:$currentSnoozeCount) のアラームを受信しました")
+
+        // 2. AlarmService を起動する Intent を作成
+        val serviceIntent = Intent(context, AlarmService::class.java).apply {
+            // 💡 サービスへ ID と回数をバトンタッチする
+            putExtra("ALARM_ID", alarmId)
+            putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount)
+        }
+
+        // 3. サービスの開始
+        try {
+            ContextCompat.startForegroundService(context, serviceIntent)
+        } catch (e: Exception) {
+            Log.e("AlarmReceiver", "サービスの開始に失敗しました: ${e.message}")
+        }
+    }
+}
+/*
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,4 +58,4 @@ class AlarmReceiver : BroadcastReceiver() {
         * アプロのスリープ画面では、実行可能
          */
     }
-}
+}*/

@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -93,9 +92,9 @@ class AlarmService : Service() {
         handler.post(runnable)
     }
 
-    private fun startForegroundNotification(title: String, alarmId: Int, snoozeCount: Int) {
+    private fun startForegroundNotification(title: String, alarmId: Int, currentSnoozeCount: Int) {
         val channelId = "alarm_channel"
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -112,12 +111,16 @@ class AlarmService : Service() {
         }
 
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
+            // Activity に ID と現在の回数を渡す
+            putExtra("ALARM_ID", alarmId)
+            putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
         }
 
+        // PendingIntent にも ID を含める（requestCode に alarmId を使うとより安全です）
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            alarmId, // 0 ではなく alarmId を使うことを推奨
             fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -151,14 +154,5 @@ class AlarmService : Service() {
         mediaPlayer?.release()
         mediaPlayer = null
         super.onDestroy()
-    }
-}
-
-// Intent拡張関数（APIレベルによる挙動の差を吸収）
-fun Intent.getIntOfDefault(key: String, defaultValue: Int): Int {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        this.getIntExtra(key, defaultValue)
-    } else {
-        this.getIntExtra(key, defaultValue)
     }
 }

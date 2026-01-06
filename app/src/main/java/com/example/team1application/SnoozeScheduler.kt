@@ -33,7 +33,8 @@ class SnoozeScheduler(private val context: Context) {
         // AlarmReceiver に渡す Intent を作成
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", alarmId) // 元のアラームIDを引き継ぐ
-            putExtra("IS_SNOOZE", true)   // スヌーズかどうかのフラグ
+            putExtra("CURRENT_SNOOZE_COUNT", nextCount) // 次の回数
+            putExtra("IS_SNOOZE", true)   // スヌーズかどうかのチェック
         }
 
         // スヌーズ用 requestCode（通常アラームと衝突しない値）
