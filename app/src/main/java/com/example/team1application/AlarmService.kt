@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.net.Uri
 
 class AlarmService : Service() {
 
@@ -46,9 +47,10 @@ class AlarmService : Service() {
     }
 
     private fun startAlarmSound(setting: AlarmSetting?) {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val uri = Uri.parse(
+            "android.resource://${packageName}/${R.raw.alarmsound1}"
+        )
 
-        // 非推奨の setAudioStreamType を避け、AudioAttributes を使用
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -60,10 +62,8 @@ class AlarmService : Service() {
             isLooping = true
             prepare()
 
-            // 音量設定の適用
             val targetVolume = setting?.volume ?: 0.5f
             if (setting?.fadeIn == true) {
-                // フェードインが有効な場合、0から開始
                 setVolume(0f, 0f)
                 startFadeIn(targetVolume)
             } else {
