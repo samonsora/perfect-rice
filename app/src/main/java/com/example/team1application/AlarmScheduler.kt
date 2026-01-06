@@ -52,7 +52,7 @@ class AlarmScheduler(private val context: Context) {
             Log.d("AlarmScheduler", "ID:${setting.id} は曜日指定がないため、次回の時刻にのみ設定します。")
 
             // 曜日を考慮せず、単純に次の「時:分」を計算
-            val calendar = Calendar.getInstance().apply {
+            val calendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Tokyo")).apply {
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, 0)
