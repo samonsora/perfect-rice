@@ -49,7 +49,6 @@ class AlarmService : Service() {
     private fun startAlarmSound(setting: AlarmSetting?) {
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
-        // 非推奨の setAudioStreamType を避け、AudioAttributes を使用
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -61,13 +60,15 @@ class AlarmService : Service() {
             isLooping = true
             prepare()
 
-            // 音量設定の適用
+            // 💡 ここで設定された最大音量を取得
             val targetVolume = setting?.volume ?: 0.5f
+
             if (setting?.fadeIn == true) {
-                // フェードインが有効な場合、0から開始
+                // フェードインが有効な場合、音量0から開始
                 setVolume(0f, 0f)
-                startFadeIn(targetVolume)
+                startFadeIn(targetVolume) // 💡 最大音量を渡す
             } else {
+                // 無効なら最初から最大音量
                 setVolume(targetVolume, targetVolume)
             }
 
@@ -78,14 +79,30 @@ class AlarmService : Service() {
     private fun startFadeIn(targetVolume: Float) {
         currentVolume = 0.0f
         val interval = 1000L // 1秒ごとに更新
-        val step = targetVolume / 10f // 10秒かけて最大にする
+
+        // 💡 20秒かけて最大にするなど、ステップ数を調整可能（例：targetVolumeを20分割）
+        val durationSeconds = 15f
+        val step = targetVolume / durationSeconds
 
         val runnable = object : Runnable {
             override fun run() {
+                // 💡 currentVolume が targetVolume に達するまで繰り返す
                 if (currentVolume < targetVolume) {
                     currentVolume += step
-                    mediaPlayer?.setVolume(currentVolume, currentVolume)
-                    handler.postDelayed(this, interval)
+
+                    // 💡 最大音量を超えないように調整
+                    val nextVolume = if (currentVolume > targetVolume) targetVolume else currentVolume
+
+                    mediaPlayer?.let {
+                        if (it.isPlaying) {
+                            it.setVolume(nextVolume, nextVolume)
+                        }
+                    }
+
+                    // 最大値に達していなければ次を予約
+                    if (nextVolume < targetVolume) {
+                        handler.postDelayed(this, interval)
+                    }
                 }
             }
         }

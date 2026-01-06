@@ -19,9 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlin.math.roundToInt
 
-/**
- * 詳細なアラーム設定画面
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmSetUI(
     onDismiss: () -> Unit,
@@ -31,13 +29,11 @@ fun AlarmSetUI(
     isNewAlarm: Boolean,
     existingAlarm: AlarmSetting? = null
 ) {
-    // --- 状態管理 ---
     var alarmTime by remember { mutableStateOf(initialTime) }
-    var alarmName by remember { mutableStateOf(existingAlarm?.name ?: "") } // "指定なし"を空に変更
+    var alarmName by remember { mutableStateOf(existingAlarm?.name ?: "") }
     var alarmVolume by remember { mutableFloatStateOf(existingAlarm?.volume ?: 0.5f) }
     var isFadeInEnabled by remember { mutableStateOf(existingAlarm?.fadeIn ?: false) }
-
-    // 繰り返しの状態 (既存の "月,火" などの文字列を保持)
+    var alarmType by remember { mutableStateOf(existingAlarm?.type ?: AlarmType.WAKE_UP) }
     var alarmDays by remember { mutableStateOf(existingAlarm?.days ?: "") }
 
     val snoozeIntervalOptions = listOf("なし", "5分", "10分", "15分", "30分")
@@ -45,11 +41,10 @@ fun AlarmSetUI(
     var snoozeInterval by remember { mutableStateOf(existingAlarm?.snoozeInterval ?: snoozeIntervalOptions[0]) }
     var snoozeCount by remember { mutableStateOf(existingAlarm?.snoozeCount ?: snoozeCountOptions[0]) }
 
-    // ダイアログ表示フラグ
     var showTimeDialog by remember { mutableStateOf(false) }
     var showVolumeDialog by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
-    var showRepeatDialog by remember { mutableStateOf(false) } // 繰り返し用
+    var showRepeatDialog by remember { mutableStateOf(false) }
 
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -82,18 +77,11 @@ fun AlarmSetUI(
                     ) { Text("削除") }
                     Spacer(Modifier.width(8.dp))
                 }
-
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = onSurfaceColor)
-                ) { Text("キャンセル") }
-
+                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(48.dp), colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = onSurfaceColor)) { Text("キャンセル") }
                 Spacer(Modifier.width(8.dp))
-
                 Button(
                     onClick = {
-                        val result = AlarmSetting(
+                        onSave(AlarmSetting(
                             id = existingAlarm?.id ?: -1,
                             time = alarmTime,
                             days = alarmDays,
@@ -102,9 +90,9 @@ fun AlarmSetUI(
                             snoozeInterval = snoozeInterval,
                             snoozeCount = snoozeCount,
                             volume = alarmVolume,
-                            fadeIn = isFadeInEnabled
-                        )
-                        onSave(result)
+                            fadeIn = isFadeInEnabled,
+                            type = alarmType
+                        ))
                     },
                     modifier = Modifier.weight(1f).height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
@@ -132,39 +120,29 @@ fun AlarmSetUI(
             alarmVolume = alarmVolume,
             onVolumeClick = { showVolumeDialog = true },
             isFadeInEnabled = isFadeInEnabled,
-            onFadeInChange = { isFadeInEnabled = it }
+            onFadeInChange = { isFadeInEnabled = it },
+            alarmType = alarmType,
+            onTypeChange = { alarmType = it }
         )
     }
 
-    // --- ダイアログ集 ---
-
-    if (showTimeDialog) {
-        AlarmSetupDialog(onDismiss = { showTimeDialog = false }, onSave = { alarmTime = it; showTimeDialog = false })
-    }
-
-    if (showVolumeDialog) {
-        AlarmVolumeDialog(initialVolume = alarmVolume, onDismiss = { showVolumeDialog = false }, onSave = { alarmVolume = it; showVolumeDialog = false })
-    }
-
-    if (showNameDialog) {
-        AlarmNameEditDialog(initialName = alarmName, onDismiss = { showNameDialog = false }, onSave = { alarmName = it; showNameDialog = false })
-    }
-
+    // ダイアログ呼び出し (daysResultを受け取るよう修正済み)
+    if (showTimeDialog) { AlarmSetupDialog(onDismiss = { showTimeDialog = false }, onSave = { alarmTime = it; showTimeDialog = false }) }
+    if (showVolumeDialog) { AlarmVolumeDialog(initialVolume = alarmVolume, onDismiss = { showVolumeDialog = false }, onSave = { alarmVolume = it; showVolumeDialog = false }) }
+    if (showNameDialog) { AlarmNameEditDialog(initialName = alarmName, onDismiss = { showNameDialog = false }, onSave = { alarmName = it; showNameDialog = false }) }
     if (showRepeatDialog) {
         AlarmRepeatDialog(
             initialDays = alarmDays,
             onDismiss = { showRepeatDialog = false },
-            onSave = { selectedDays ->
-                alarmDays = selectedDays
+            onSave = { daysResult ->
+                alarmDays = daysResult
                 showRepeatDialog = false
             }
         )
     }
 }
 
-/**
- * 設定項目リスト
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmSettingListContent(
     modifier: Modifier = Modifier,
@@ -183,25 +161,49 @@ fun AlarmSettingListContent(
     alarmVolume: Float,
     onVolumeClick: () -> Unit,
     isFadeInEnabled: Boolean,
-    onFadeInChange: (Boolean) -> Unit
+    onFadeInChange: (Boolean) -> Unit,
+    alarmType: AlarmType,
+    onTypeChange: (AlarmType) -> Unit
 ) {
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
         fun header(text: String) = item {
             Text(text = text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp))
         }
 
+        header("アラームの種類")
+        item {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = alarmType == AlarmType.WAKE_UP,
+                        onClick = { onTypeChange(AlarmType.WAKE_UP) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        // 💡 大きめのサイズ設定
+                        modifier = Modifier.height(52.dp).weight(1f)
+                    ) {
+                        Text("起床", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
+                    SegmentedButton(
+                        selected = alarmType == AlarmType.BEDTIME,
+                        onClick = { onTypeChange(AlarmType.BEDTIME) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        // 💡 大きめのサイズ設定
+                        modifier = Modifier.height(52.dp).weight(1f)
+                    ) {
+                        Text("就寝", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+
         header("基本設定")
         item { AlarmTimeSettingItem(time = currentTime, onClick = onTimeClick) }
-        item {
-            AlarmSimpleSettingItem(
-                title = "繰り返し",
-                subtitle = alarmDays.ifBlank { "毎日" },
-                onClick = onRepeatClick
-            )
-        }
-        item { AlarmDropdownSettingItem("スヌーズの間隔", snoozeInterval, snoozeIntervalOptions, onSnoozeIntervalChange) }
-        if (snoozeInterval != "なし") {
-            item { AlarmDropdownSettingItem("スヌーズの回数", snoozeCount, snoozeCountOptions, onSnoozeCountChange) }
+        item { AlarmSimpleSettingItem(title = "繰り返し", subtitle = alarmDays.ifBlank { "毎日" }, onClick = onRepeatClick) }
+        if (alarmType == AlarmType.WAKE_UP) {
+            item { AlarmDropdownSettingItem("スヌーズの間隔", snoozeInterval, snoozeIntervalOptions, onSnoozeIntervalChange) }
+            if (snoozeInterval != "なし") {
+                item { AlarmDropdownSettingItem("スヌーズの回数", snoozeCount, snoozeCountOptions, onSnoozeCountChange) }
+            }
         }
 
         header("アラーム名")
@@ -210,17 +212,9 @@ fun AlarmSettingListContent(
         header("アラーム音の設定")
         item { AlarmSimpleSettingItem("アラーム音", "デフォルト") }
         item { AlarmVolumeSettingItem(volume = alarmVolume, onClick = onVolumeClick) }
-        item {
-            AlarmSwitchSettingItem(
-                title = "フェードイン",
-                subtitle = "音量を徐々に大きくする",
-                checked = isFadeInEnabled,
-                onCheckedChange = onFadeInChange
-            )
-        }
+        item { AlarmSwitchSettingItem(title = "フェードイン", subtitle = "音量を徐々に大きくする", checked = isFadeInEnabled, onCheckedChange = onFadeInChange) }
     }
 }
-
 /**
  * 繰り返し設定ダイアログ
  */
