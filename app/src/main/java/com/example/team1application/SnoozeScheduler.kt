@@ -21,7 +21,7 @@ class SnoozeScheduler(private val context: Context) {
     /**
      * 5分後にアラームを再登録する
      */
-    fun scheduleSnooze(alarmId: Int, minutes: Int) {
+    fun scheduleSnooze(alarmId: Int, minutes: Int, nextCount: Int) {
 
         // 現在時刻を取得
         val calendar = Calendar.getInstance().apply {

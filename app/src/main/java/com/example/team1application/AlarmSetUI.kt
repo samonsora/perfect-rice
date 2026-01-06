@@ -234,7 +234,7 @@ fun AlarmRepeatDialog(
 
     // 現在選択されている曜日をセットに変換
     val initialSelected = if (initialDays == "毎日" || initialDays.isBlank()) {
-        emptySet<String>()
+        emptySet()
     } else {
         initialDays.split(",").toSet()
     }

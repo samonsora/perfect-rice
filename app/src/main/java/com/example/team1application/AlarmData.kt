@@ -21,7 +21,20 @@ data class AlarmSetting(
     val snoozeCount: String,
     val volume: Float,
     val fadeIn: Boolean
-)
+){
+    // 💡 これを追加： "無制限" かどうかを判定する
+    val isSnoozeUnlimited: Boolean
+        get() = snoozeCount == "無制限"
+
+    // "3回" という文字列から数値の 3 を取り出す
+    val snoozeCountInt: Int
+        get() = if (isSnoozeUnlimited) {
+            0 // 無制限の場合、ロジックで判定
+        } else {
+            // "1回" -> "1" に置換してから数値変換
+            snoozeCount.replace("回", "").toIntOrNull() ?: 0
+        }
+}
 
 /**
  * アラーム設定の永続化を担うクラス

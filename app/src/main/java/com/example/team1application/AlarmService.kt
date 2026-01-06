@@ -24,15 +24,17 @@ class AlarmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val alarmId = intent?.getIntOfDefault("ALARM_ID", -1) ?: -1
+        val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
+        // スヌーズ回数を受け取る（デフォルトは0）
+        val snoozeCount = intent?.getIntExtra("CURRENT_SNOOZE_COUNT", 0) ?: 0
 
-        // 1. データストアから最新の設定を読み込む
         val allAlarms = AlarmDataStore.loadAlarms(this)
         val setting = allAlarms.find { it.id == alarmId }
 
         // 2. 通知の開始（Foreground Service 必須）
         // アラーム名がある場合は通知に表示
-        startForegroundNotification(setting?.name ?: "アラーム")
+        // 通知にスヌーズ回数情報を渡す
+        startForegroundNotification(setting?.name ?: "アラーム", alarmId, snoozeCount)
 
         // 3. アラーム音の再生
         if (setting != null) {
@@ -91,7 +93,7 @@ class AlarmService : Service() {
         handler.post(runnable)
     }
 
-    private fun startForegroundNotification(title: String) {
+    private fun startForegroundNotification(title: String, alarmId: Int, snoozeCount: Int) {
         val channelId = "alarm_channel"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 

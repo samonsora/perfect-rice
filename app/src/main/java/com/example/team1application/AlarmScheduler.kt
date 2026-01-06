@@ -103,6 +103,8 @@ class AlarmScheduler(private val context: Context) {
     private fun createPendingIntent(settingId: Int, requestCode: Int): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", settingId)
+            // 💡 追加：初回のアラームなので、現在のスヌーズ回数は 0
+            putExtra("CURRENT_SNOOZE_COUNT", 0)
         }
         return PendingIntent.getBroadcast(
             context,
