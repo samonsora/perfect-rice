@@ -74,7 +74,7 @@ fun AlarmScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("はよ起きろカス")
+        Text("おはようございます")
 
         Spacer(modifier = Modifier.height(24.dp))
 
