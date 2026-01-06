@@ -84,7 +84,7 @@ fun AlarmScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "はよ起きろ", style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
+        Text(text = "おはようございます", style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
 
         // 💡 表示の切り替え
         val countText = if (isUnlimited) {
