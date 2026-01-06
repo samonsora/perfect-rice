@@ -48,11 +48,11 @@ class AlarmScheduler(private val context: Context) {
         val minute = timeParts[1].toInt()
 
         if (daysOfWeek.isEmpty()) {
-            // 💡 【修正点】曜日指定がない場合は「毎日（次の指定時刻）」として登録
+            // 曜日指定がない場合は「毎日（次の指定時刻）」として登録
             Log.d("AlarmScheduler", "ID:${setting.id} は曜日指定がないため、次回の時刻にのみ設定します。")
 
             // 曜日を考慮せず、単純に次の「時:分」を計算
-            val calendar = Calendar.getInstance().apply {
+            val calendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Tokyo")).apply {
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, 0)
@@ -103,6 +103,8 @@ class AlarmScheduler(private val context: Context) {
     private fun createPendingIntent(settingId: Int, requestCode: Int): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", settingId)
+            // 初回のアラームのスヌーズ回数は 0
+            putExtra("CURRENT_SNOOZE_COUNT", 0)
         }
         return PendingIntent.getBroadcast(
             context,
