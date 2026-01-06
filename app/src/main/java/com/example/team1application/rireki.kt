@@ -29,7 +29,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 // --- 1. データ構造 ---
 @Serializable
