@@ -80,7 +80,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     .padding(bottom = innerPadding.calculateBottomPadding())
             ) { page ->
                 when (page) {
-                    0 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen()
+                    0 -> if (isSleepMode) MealScreen() else FoodRecordScreen()
                     // 👇 ここ！設定ボタンを押した時の処理（onSettingsClick）を渡すよ！
                     1 -> HomeMainContent(
                         isSleepMode = isSleepMode,
