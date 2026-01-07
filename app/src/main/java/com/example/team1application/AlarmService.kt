@@ -5,16 +5,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.net.Uri
+import androidx.core.content.edit
+import androidx.core.net.toUri
 
 class AlarmService : Service() {
 
@@ -26,6 +25,9 @@ class AlarmService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val alarmId = intent?.getIntOfDefault("ALARM_ID", -1) ?: -1
+        val alarmType = intent?.getStringExtra("ALARM_TYPE") ?: ""
+
+        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit { putBoolean("is_ringing", true) }
 
         // 1. データストアから最新の設定を読み込む
         val allAlarms = AlarmDataStore.loadAlarms(this)
@@ -33,7 +35,7 @@ class AlarmService : Service() {
 
         // 2. 通知の開始（Foreground Service 必須）
         // アラーム名がある場合は通知に表示
-        startForegroundNotification(setting?.name ?: "アラーム")
+        startForegroundNotification(setting?.name ?: "アラーム", alarmType, alarmId)
 
         // 3. アラーム音の再生
         if (setting != null) {
@@ -47,9 +49,7 @@ class AlarmService : Service() {
     }
 
     private fun startAlarmSound(setting: AlarmSetting?) {
-        val uri = Uri.parse(
-            "android.resource://${packageName}/${R.raw.alarmsound1}"
-        )
+        val uri = "android.resource://${packageName}/${R.raw.alarmsound1}".toUri()
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -77,7 +77,7 @@ class AlarmService : Service() {
     private fun startFadeIn(targetVolume: Float) {
         currentVolume = 0.0f
         val interval = 1000L // 1秒ごとに更新
-        val step = targetVolume / 10f // 10秒かけて最大にする
+        val step = targetVolume / 20f // 20秒かけて最大にする
 
         val runnable = object : Runnable {
             override fun run() {
@@ -91,9 +91,9 @@ class AlarmService : Service() {
         handler.post(runnable)
     }
 
-    private fun startForegroundNotification(title: String) {
+    private fun startForegroundNotification(title: String, alarmType: String, alarmId: Int) {
         val channelId = "alarm_channel"
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -111,6 +111,8 @@ class AlarmService : Service() {
 
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
+            putExtra("ALARM_ID", alarmId)
+            putExtra("ALARM_TYPE", alarmType)
         }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
@@ -148,6 +150,7 @@ class AlarmService : Service() {
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
+        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit { putBoolean("is_ringing", false) }
         super.onDestroy()
     }
 }

@@ -13,7 +13,7 @@ import java.io.IOException
 @Serializable
 enum class AlarmType {
     WAKE_UP,  // 起床用
-    BEDTIME   // 就寝喚起用
+    BEDTIME   // 就寝用
 }
 
 /**
@@ -36,7 +36,7 @@ data class AlarmSetting(
     val isSnoozeUnlimited: Boolean
         get() = snoozeCount == "無制限"
 
-    // "3回" という文字列から数値の 3 を取り出す
+    // 例 "3回" という文字列から数値の 3 を取り出す
     val snoozeCountInt: Int
         get() = if (isSnoozeUnlimited) {
             0

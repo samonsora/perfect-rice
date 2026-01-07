@@ -24,56 +24,50 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 
-
 class MainActivity : ComponentActivity() {
     private lateinit var alarmInitializer: AlarmInitializer
 
-    // 🔔 通知許可をリクエストするための魔法のランチャー
+    // 🔔 通知許可リクエスト用ランチャー
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
-        if (isGranted) {
-            // 許可されたら、すぐに次のチェック（アラームなど）に進むためにonResumeのような処理をしてもいいけど
-            // 基本的には何もしなくても、次の起動やonResumeで自然にチェックされるよ
-        }
+        // 許可結果に応じた処理が必要ならここに記述
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 1. AlarmInitializerをインスタンス化
+        // --- 1. アラームの復元と初期設定 ---
         alarmInitializer = AlarmInitializer(applicationContext)
-        // 2. 本機能の初期設定を実行
         alarmInitializer.initializeAlarms()
 
-        // 🔔 アプリ起動時に、通知許可が必要なら聞く（Android 13以上）
+        // --- 2. 鳴動中チェック：通知がなくてもアプリ起動で停止画面へ飛ばす ---
+        val prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
+        val isRinging = prefs.getBoolean("is_ringing", false)
+
+        if (isRinging) {
+            // MainActivityの上に重ねるようにAlarmActivityを起動
+            val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(alarmIntent)
+        }
+
+        // --- 3. 通知許可の確認 (Android 13以上) ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
+        // --- 4. メインUIの構築 ---
         setContent {
             Team1ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var isTitle by remember { mutableStateOf(true) }
 
-                    // ✨✨ 画面切り替えのアニメーション ✨✨
-                    val alarmManager = getSystemService(AlarmManager::class.java)
-                    if (!alarmManager.canScheduleExactAlarms()) {
-                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-                    }
-
-
-                    // 1. AlarmInitializerをインスタンス化（ロジックの引き出し）
-                    // applicationContext を渡し、Activityの寿命に依存しないようにする
-                    alarmInitializer = AlarmInitializer(applicationContext)
-
-                    // 2. 本機能の初期設定を実行
-                    alarmInitializer.initializeAlarms()
-
-                    // ✨✨ ここが「フワッ」とする魔法陣！ ✨✨
+                    // ✨ 画面切り替えアニメーション（タイトル -> ホーム）
                     Crossfade(
                         targetState = isTitle,
                         label = "画面切り替え",
@@ -95,33 +89,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 🚨 ここに全ての権限チェックを集約！ 🚨
-    // 画面が表示されるたびに、上から順番に「まだ足りない権限はないかな？」って確認するよ
     override fun onResume() {
         super.onResume()
         checkAllPermissionsSequence()
     }
 
     /**
-     * 権限を順番にチェックするメソッド。
-     * 同時に複数の設定画面を開かないように、if-else if で繋いでいるのがポイント！
+     * 必要な権限を順番にチェックし、足りない場合は設定画面へ誘導する
      */
     private fun checkAllPermissionsSequence() {
-        // 1. まずは正確なアラーム（Android 12以上）
+        // 1. 正確なアラーム権限 (Android 12以上)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(AlarmManager::class.java)
             if (!alarmManager.canScheduleExactAlarms()) {
-                // 許可がない場合、アラーム設定画面へGo！
-                // ここで return することで、下の処理（使用状況チェック）は一時停止するよ
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
                 startActivity(intent)
-                return
+                return // 設定から戻るまで次のチェックは行わない
             }
         }
 
-        // 2. アラームがOKなら、次は使用状況アクセス権限
+        // 2. 使用状況アクセス権限
         if (!isUsageAccessGranted(this)) {
-            // 許可がない場合、使用状況設定画面へGo！
             requestUsageAccess(this)
             return
         }

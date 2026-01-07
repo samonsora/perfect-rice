@@ -14,6 +14,10 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
         val currentSnoozeCount = intent.getIntExtra("CURRENT_SNOOZE_COUNT", 0)
 
+        val allAlarms = AlarmDataStore.loadAlarms(context)
+        val setting = allAlarms.find { it.id == alarmId }
+        val typeString = setting?.type?.name ?: ""
+
         Log.d("AlarmReceiver", "⏰ ID:$alarmId (スヌーズ回数:$currentSnoozeCount) のアラームを受信しました")
 
         // 2. AlarmService を起動する Intent を作成
@@ -21,6 +25,7 @@ class AlarmReceiver : BroadcastReceiver() {
             // 💡 サービスへ ID と回数をバトンタッチする
             putExtra("ALARM_ID", alarmId)
             putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount)
+            putExtra("ALARM_TYPE", typeString)
         }
 
         // 3. サービスの開始

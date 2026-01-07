@@ -23,6 +23,8 @@ class AlarmActivity : ComponentActivity() {
 
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
 
+        val alarmType = intent.getStringExtra("ALARM_TYPE") ?: ""
+
         // 1. 設定ファイルをロード
         val allAlarms = AlarmDataStore.loadAlarms(this)
         val currentSetting = allAlarms.find { it.id == alarmId }
@@ -41,6 +43,7 @@ class AlarmActivity : ComponentActivity() {
 
         setContent {
             AlarmScreen(
+                alarmType = alarmType,
                 currentCount = currentSnoozeCount,
                 maxCount = maxSnoozeCount,
                 isUnlimited = isUnlimited,
@@ -71,8 +74,10 @@ class AlarmActivity : ComponentActivity() {
         finish()
     }
 }
+
 @Composable
 fun AlarmScreen(
+    alarmType: String,
     currentCount: Int,
     maxCount: Int,
     isUnlimited: Boolean,
@@ -84,28 +89,48 @@ fun AlarmScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "おはようございます", style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
-
-        // 💡 表示の切り替え
-        val countText = if (isUnlimited) {
-            "スヌーズ回数: $currentCount / 無制限"
-        } else {
-            "スヌーズ回数: $currentCount / $maxCount 回"
+        // 1. メインメッセージの表示
+        val mainMessage = when (alarmType) {
+            "WAKE_UP" -> "おはようございます"
+            "BEDTIME" -> "おやすみなさい"
+            else -> ""
         }
-        Text(text = countText)
+
+        if (mainMessage.isNotEmpty()) {
+            Text(
+                text = mainMessage,
+                style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified)
+            )
+        }
+
+        //  2. 起床用（WAKE_UP）の場合のみスヌーズ回数を表示
+        if (alarmType == "WAKE_UP") {
+            val countText = if (isUnlimited) {
+                "スヌーズ回数: $currentCount / 無制限"
+            } else {
+                "スヌーズ回数: $currentCount / $maxCount 回"
+            }
+            Text(text = countText)
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onStopClick) { Text("止める") }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // 3. 停止ボタン（これは共通）
+        Button(onClick = onStopClick) {
+            Text(if (alarmType == "BEDTIME") "了解" else "止める")
+        }
 
-        // 💡 無制限なら常に有効、上限ありなら比較
-        val canSnooze = isUnlimited || currentCount < maxCount
-        Button(
-            onClick = onSnoozeClick,
-            enabled = canSnooze
-        ) {
-            Text(if (canSnooze) "スヌーズ" else "スヌーズ上限です")
+        // 4. 起床用（WAKE_UP）の場合のみスヌーズボタンを表示
+        if (alarmType == "WAKE_UP") {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val canSnooze = isUnlimited || currentCount < maxCount
+            Button(
+                onClick = onSnoozeClick,
+                enabled = canSnooze
+            ) {
+                Text(if (canSnooze) "スヌーズ" else "スヌーズ上限です")
+            }
         }
     }
 }
