@@ -1,7 +1,12 @@
 package com.example.team1application
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +40,8 @@ fun AlarmSetUI(
     isNewAlarm: Boolean,
     existingAlarm: AlarmSetting? = null
 ) {
+    val context = LocalContext.current
+
     // --- 状態管理 ---
     var alarmTime by remember { mutableStateOf(initialTime) }
     var alarmName by remember { mutableStateOf(existingAlarm?.name ?: "") }
@@ -40,17 +50,36 @@ fun AlarmSetUI(
     var alarmType by remember { mutableStateOf(existingAlarm?.type ?: AlarmType.WAKE_UP) }
     var alarmDays by remember { mutableStateOf(existingAlarm?.days ?: "") }
 
-    // アラーム音の選択状態
+    val soundOptions = remember {
+        mutableStateListOf("alarmsound1", "+アラーム音を追加", "-アラーム音を削除")
+    }
     var alarmSound by remember { mutableStateOf(existingAlarm?.soundName ?: "alarmsound1") }
+
+    // ファイル選択ランチャー
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            val fileNameWithExt = getFileName(context, it)
+            if (fileNameWithExt?.endsWith(".mp3", ignoreCase = true) == true) {
+                val fileName = fileNameWithExt.substringBeforeLast(".")
+                if (saveFileToInternalStorage(context, it, "$fileName.mp3")) {
+                    val insertIndex = soundOptions.indexOf("+アラーム音を追加")
+                    if (insertIndex != -1 && !soundOptions.contains(fileName)) {
+                        soundOptions.add(insertIndex, fileName)
+                    }
+                    alarmSound = fileName
+                }
+            }
+        }
+    }
 
     val snoozeIntervalOptions = listOf("なし", "5分", "10分", "15分", "30分")
     val snoozeCountOptions = listOf("無制限", "1回", "2回", "3回", "4回", "5回")
-    val soundOptions = listOf("alarmsound1", "", "") // res/raw内のファイル名
 
     var snoozeInterval by remember { mutableStateOf(existingAlarm?.snoozeInterval ?: snoozeIntervalOptions[0]) }
     var snoozeCount by remember { mutableStateOf(existingAlarm?.snoozeCount ?: snoozeCountOptions[0]) }
 
-    // ダイアログ表示フラグ
     var showTimeDialog by remember { mutableStateOf(false) }
     var showVolumeDialog by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
@@ -151,18 +180,23 @@ fun AlarmSetUI(
             onTypeChange = { alarmType = it },
             selectedSound = alarmSound,
             soundOptions = soundOptions,
-            onSoundChange = { alarmSound = it }
+            onSoundChange = { selected ->
+                when (selected) {
+                    "+アラーム音を追加" -> launcher.launch("audio/mpeg")
+                    "-アラーム音を削除" -> { /* 必要に応じて実装 */ }
+                    else -> alarmSound = selected
+                }
+            },
         )
     }
 
-    // --- 各種ダイアログの実装 ---
+    // --- 各種ダイアログ ---
     if (showTimeDialog) {
         AlarmSetupDialog(
             onDismiss = { showTimeDialog = false },
             onSave = { alarmTime = it; showTimeDialog = false }
         )
     }
-
     if (showNameDialog) {
         AlarmNameEditDialog(
             initialName = alarmName,
@@ -170,18 +204,13 @@ fun AlarmSetUI(
             onSave = { alarmName = it; showNameDialog = false }
         )
     }
-
     if (showRepeatDialog) {
         AlarmRepeatDialog(
             initialDays = alarmDays,
             onDismiss = { showRepeatDialog = false },
-            onSave = { daysResult ->
-                alarmDays = daysResult
-                showRepeatDialog = false
-            }
+            onSave = { alarmDays = it; showRepeatDialog = false }
         )
     }
-
     if (showVolumeDialog) {
         AlarmVolumeDialog(
             initialVolume = alarmVolume,
@@ -277,43 +306,39 @@ fun AlarmSettingListContent(
 /**
  * 音量設定＆試聴ダイアログ
  */
+
 @Composable
 fun AlarmVolumeDialog(initialVolume: Float, soundName: String, onDismiss: () -> Unit, onSave: (Float) -> Unit) {
     val context = LocalContext.current
     var currentVolume by remember { mutableFloatStateOf(initialVolume) }
     var isPlaying by remember { mutableStateOf(false) }
 
-    // リソースIDを動的に取得
-    val resId = remember(soundName) {
-        context.resources.getIdentifier(soundName, "raw", context.packageName)
-    }
-
-    // AlarmVolumeDialog 内の修正
-    val mediaPlayer = remember(resId) {
-        if (resId != 0) {
-            MediaPlayer.create(context, resId).apply {
-                isLooping = true
-                val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM) // アラームとして再生
+    val mediaPlayer = remember(soundName) {
+        val mp = MediaPlayer().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
-                setAudioAttributes(audioAttributes)
-
-                setVolume(currentVolume, currentVolume)
-            }
-        } else null
-    }
-
-    LaunchedEffect(currentVolume) {
-        mediaPlayer?.setVolume(currentVolume, currentVolume)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            mediaPlayer?.stop()
-            mediaPlayer?.release()
+            )
+            isLooping = true
         }
+        try {
+            val resId = context.resources.getIdentifier(soundName, "raw", context.packageName)
+            if (resId != 0) {
+                mp.setDataSource(context, "android.resource://${context.packageName}/$resId".toUri())
+            } else {
+                val file = File(context.filesDir, "$soundName.mp3")
+                if (file.exists()) mp.setDataSource(file.absolutePath) else return@remember null
+            }
+            mp.prepare()
+            mp.setVolume(currentVolume, currentVolume)
+            mp
+        } catch (_: Exception) { null }
     }
+
+    LaunchedEffect(currentVolume) { mediaPlayer?.setVolume(currentVolume, currentVolume) }
+    DisposableEffect(Unit) { onDispose { mediaPlayer?.release() } }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -322,19 +347,11 @@ fun AlarmVolumeDialog(initialVolume: Float, soundName: String, onDismiss: () -> 
                 Spacer(Modifier.height(16.dp))
                 Text("${(currentVolume * 100).roundToInt()}%", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
                 Slider(value = currentVolume, onValueChange = { currentVolume = it })
-
                 Spacer(Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        if (isPlaying) mediaPlayer?.pause() else mediaPlayer?.start()
-                        isPlaying = !isPlaying
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (isPlaying) "■ 停止" else "▶ 試聴する")
-                }
-
+                OutlinedButton(onClick = {
+                    if (isPlaying) mediaPlayer?.pause() else mediaPlayer?.start()
+                    isPlaying = !isPlaying
+                }, modifier = Modifier.fillMaxWidth()) { Text(if (isPlaying) "■ 停止" else "▶ 試聴する") }
                 Spacer(Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("キャンセル") }
@@ -479,4 +496,44 @@ fun AlarmVolumeSettingItem(volume: Float, onClick: () -> Unit) {
         Text("${(volume * 100).roundToInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp)
+}
+
+/**
+ * URIからファイル名を取得する（例: sample.mp3）
+ */
+private fun getFileName(context: Context, uri: Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index != -1) result = it.getString(index)
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/') ?: -1
+        if (cut != -1) result = result?.substring(cut + 1)
+    }
+    return result
+}
+
+/**
+ * 選択されたファイルをアプリの内部ストレージにコピー保存する
+ */
+private fun saveFileToInternalStorage(context: Context, uri: Uri, fileName: String): Boolean {
+    return try {
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val file = File(context.filesDir, fileName)
+            FileOutputStream(file).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
 }
