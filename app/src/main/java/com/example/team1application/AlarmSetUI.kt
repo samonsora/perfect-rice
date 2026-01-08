@@ -58,7 +58,7 @@ fun AlarmSetUI(
     // ファイル選択ランチャー
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: android.net.Uri? ->
+    ) { uri: Uri? ->
         uri?.let {
             val fileNameWithExt = getFileName(context, it)
             if (fileNameWithExt?.endsWith(".mp3", ignoreCase = true) == true) {
