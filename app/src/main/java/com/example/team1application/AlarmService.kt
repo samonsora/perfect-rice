@@ -26,6 +26,7 @@ class AlarmService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val alarmId = intent?.getIntOfDefault("ALARM_ID", -1) ?: -1
         val alarmType = intent?.getStringExtra("ALARM_TYPE") ?: ""
+        val currentSnoozeCount = intent?.getIntExtra("CURRENT_SNOOZE_COUNT", 0) ?: 0
 
         getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit { putBoolean("is_ringing", true) }
 
@@ -35,7 +36,7 @@ class AlarmService : Service() {
 
         // 2. 通知の開始（Foreground Service 必須）
         // アラーム名がある場合は通知に表示
-        startForegroundNotification(setting?.name ?: "アラーム", alarmType, alarmId)
+        startForegroundNotification(setting?.name ?: "アラーム", alarmType, alarmId, currentSnoozeCount)
 
         // 3. アラーム音の再生
         if (setting != null) {
@@ -65,6 +66,7 @@ class AlarmService : Service() {
             .build()
 
         mediaPlayer = MediaPlayer().apply {
+            setAudioAttributes(audioAttributes)
             setDataSource(this@AlarmService, uri)
             setAudioAttributes(audioAttributes)
             isLooping = true
@@ -99,7 +101,7 @@ class AlarmService : Service() {
         handler.post(runnable)
     }
 
-    private fun startForegroundNotification(title: String, alarmType: String, alarmId: Int) {
+    private fun startForegroundNotification(title: String, alarmType: String, alarmId: Int, currentSnoozeCount: Int) {
         val channelId = "alarm_channel"
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -121,6 +123,7 @@ class AlarmService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
             putExtra("ALARM_ID", alarmId)
             putExtra("ALARM_TYPE", alarmType)
+            putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount) // ここが重要！
         }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
