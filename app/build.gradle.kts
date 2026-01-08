@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,6 +12,10 @@ android {
     namespace = "com.example.team1application"
     compileSdk = 36
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.example.team1application"
         minSdk = 24
@@ -17,6 +24,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
     }
 
     buildTypes {
@@ -70,5 +78,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.work.runtime.ktx)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
 
 }
