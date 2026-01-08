@@ -1,5 +1,7 @@
 package com.example.team1application
 
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +32,7 @@ fun AlarmSetUI(
     isNewAlarm: Boolean,
     existingAlarm: AlarmSetting? = null
 ) {
+    // --- 状態管理 ---
     var alarmTime by remember { mutableStateOf(initialTime) }
     var alarmName by remember { mutableStateOf(existingAlarm?.name ?: "") }
     var alarmVolume by remember { mutableFloatStateOf(existingAlarm?.volume ?: 0.5f) }
@@ -36,11 +40,17 @@ fun AlarmSetUI(
     var alarmType by remember { mutableStateOf(existingAlarm?.type ?: AlarmType.WAKE_UP) }
     var alarmDays by remember { mutableStateOf(existingAlarm?.days ?: "") }
 
+    // アラーム音の選択状態
+    var alarmSound by remember { mutableStateOf(existingAlarm?.soundName ?: "alarmsound1") }
+
     val snoozeIntervalOptions = listOf("なし", "5分", "10分", "15分", "30分")
     val snoozeCountOptions = listOf("無制限", "1回", "2回", "3回", "4回", "5回")
+    val soundOptions = listOf("alarmsound1", "", "") // res/raw内のファイル名
+
     var snoozeInterval by remember { mutableStateOf(existingAlarm?.snoozeInterval ?: snoozeIntervalOptions[0]) }
     var snoozeCount by remember { mutableStateOf(existingAlarm?.snoozeCount ?: snoozeCountOptions[0]) }
 
+    // ダイアログ表示フラグ
     var showTimeDialog by remember { mutableStateOf(false) }
     var showVolumeDialog by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
@@ -52,7 +62,11 @@ fun AlarmSetUI(
     Scaffold(
         topBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().height(56.dp).background(MaterialTheme.colorScheme.surface).padding(horizontal = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
@@ -63,7 +77,11 @@ fun AlarmSetUI(
         },
         bottomBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().height(80.dp).background(MaterialTheme.colorScheme.surface).padding(16.dp, 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(16.dp, 8.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 if (!isNewAlarm) {
@@ -77,7 +95,14 @@ fun AlarmSetUI(
                     ) { Text("削除") }
                     Spacer(Modifier.width(8.dp))
                 }
-                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(48.dp), colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = onSurfaceColor)) { Text("キャンセル") }
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = onSurfaceColor
+                    )
+                ) { Text("キャンセル") }
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
@@ -91,7 +116,8 @@ fun AlarmSetUI(
                             snoozeCount = snoozeCount,
                             volume = alarmVolume,
                             fadeIn = isFadeInEnabled,
-                            type = alarmType
+                            type = alarmType,
+                            soundName = alarmSound
                         ))
                     },
                     modifier = Modifier.weight(1f).height(48.dp),
@@ -122,14 +148,29 @@ fun AlarmSetUI(
             isFadeInEnabled = isFadeInEnabled,
             onFadeInChange = { isFadeInEnabled = it },
             alarmType = alarmType,
-            onTypeChange = { alarmType = it }
+            onTypeChange = { alarmType = it },
+            selectedSound = alarmSound,
+            soundOptions = soundOptions,
+            onSoundChange = { alarmSound = it }
         )
     }
 
-    // ダイアログ呼び出し (daysResultを受け取るよう修正済み)
-    if (showTimeDialog) { AlarmSetupDialog(onDismiss = { showTimeDialog = false }, onSave = { alarmTime = it; showTimeDialog = false }) }
-    if (showVolumeDialog) { AlarmVolumeDialog(initialVolume = alarmVolume, onDismiss = { showVolumeDialog = false }, onSave = { alarmVolume = it; showVolumeDialog = false }) }
-    if (showNameDialog) { AlarmNameEditDialog(initialName = alarmName, onDismiss = { showNameDialog = false }, onSave = { alarmName = it; showNameDialog = false }) }
+    // --- 各種ダイアログの実装 ---
+    if (showTimeDialog) {
+        AlarmSetupDialog(
+            onDismiss = { showTimeDialog = false },
+            onSave = { alarmTime = it; showTimeDialog = false }
+        )
+    }
+
+    if (showNameDialog) {
+        AlarmNameEditDialog(
+            initialName = alarmName,
+            onDismiss = { showNameDialog = false },
+            onSave = { alarmName = it; showNameDialog = false }
+        )
+    }
+
     if (showRepeatDialog) {
         AlarmRepeatDialog(
             initialDays = alarmDays,
@@ -138,6 +179,15 @@ fun AlarmSetUI(
                 alarmDays = daysResult
                 showRepeatDialog = false
             }
+        )
+    }
+
+    if (showVolumeDialog) {
+        AlarmVolumeDialog(
+            initialVolume = alarmVolume,
+            soundName = alarmSound,
+            onDismiss = { showVolumeDialog = false },
+            onSave = { alarmVolume = it; showVolumeDialog = false }
         )
     }
 }
@@ -163,11 +213,19 @@ fun AlarmSettingListContent(
     isFadeInEnabled: Boolean,
     onFadeInChange: (Boolean) -> Unit,
     alarmType: AlarmType,
-    onTypeChange: (AlarmType) -> Unit
+    onTypeChange: (AlarmType) -> Unit,
+    selectedSound: String,
+    soundOptions: List<String>,
+    onSoundChange: (String) -> Unit
 ) {
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
         fun header(text: String) = item {
-            Text(text = text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
+            )
         }
 
         header("アラームの種類")
@@ -178,7 +236,6 @@ fun AlarmSettingListContent(
                         selected = alarmType == AlarmType.WAKE_UP,
                         onClick = { onTypeChange(AlarmType.WAKE_UP) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        // 💡 大きめのサイズ設定
                         modifier = Modifier.height(52.dp).weight(1f)
                     ) {
                         Text("起床", fontSize = 16.sp, fontWeight = FontWeight.Medium)
@@ -187,7 +244,6 @@ fun AlarmSettingListContent(
                         selected = alarmType == AlarmType.BEDTIME,
                         onClick = { onTypeChange(AlarmType.BEDTIME) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        // 💡 大きめのサイズ設定
                         modifier = Modifier.height(52.dp).weight(1f)
                     ) {
                         Text("就寝", fontSize = 16.sp, fontWeight = FontWeight.Medium)
@@ -199,6 +255,8 @@ fun AlarmSettingListContent(
         header("基本設定")
         item { AlarmTimeSettingItem(time = currentTime, onClick = onTimeClick) }
         item { AlarmSimpleSettingItem(title = "繰り返し", subtitle = alarmDays.ifBlank { "毎日" }, onClick = onRepeatClick) }
+
+        // 起床時のみスヌーズ設定を表示
         if (alarmType == AlarmType.WAKE_UP) {
             item { AlarmDropdownSettingItem("スヌーズの間隔", snoozeInterval, snoozeIntervalOptions, onSnoozeIntervalChange) }
             if (snoozeInterval != "なし") {
@@ -210,29 +268,90 @@ fun AlarmSettingListContent(
         item { AlarmSimpleSettingItem("アラーム名", alarmName.ifBlank { "指定なし" }, onClick = onNameClick) }
 
         header("アラーム音の設定")
-        item { AlarmSimpleSettingItem("アラーム音", "デフォルト") }
+        item { AlarmDropdownSettingItem("アラーム音", selectedSound, soundOptions, onSoundChange) }
         item { AlarmVolumeSettingItem(volume = alarmVolume, onClick = onVolumeClick) }
         item { AlarmSwitchSettingItem(title = "フェードイン", subtitle = "音量を徐々に大きくする", checked = isFadeInEnabled, onCheckedChange = onFadeInChange) }
     }
 }
+
+/**
+ * 音量設定＆試聴ダイアログ
+ */
+@Composable
+fun AlarmVolumeDialog(initialVolume: Float, soundName: String, onDismiss: () -> Unit, onSave: (Float) -> Unit) {
+    val context = LocalContext.current
+    var currentVolume by remember { mutableFloatStateOf(initialVolume) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    // リソースIDを動的に取得
+    val resId = remember(soundName) {
+        context.resources.getIdentifier(soundName, "raw", context.packageName)
+    }
+
+    // AlarmVolumeDialog 内の修正
+    val mediaPlayer = remember(resId) {
+        if (resId != 0) {
+            MediaPlayer.create(context, resId).apply {
+                isLooping = true
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM) // アラームとして再生
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                setAudioAttributes(audioAttributes)
+
+                setVolume(currentVolume, currentVolume)
+            }
+        } else null
+    }
+
+    LaunchedEffect(currentVolume) {
+        mediaPlayer?.setVolume(currentVolume, currentVolume)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("最大音量を設定", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(16.dp))
+                Text("${(currentVolume * 100).roundToInt()}%", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+                Slider(value = currentVolume, onValueChange = { currentVolume = it })
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        if (isPlaying) mediaPlayer?.pause() else mediaPlayer?.start()
+                        isPlaying = !isPlaying
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isPlaying) "■ 停止" else "▶ 試聴する")
+                }
+
+                Spacer(Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("キャンセル") }
+                    Button(onClick = { onSave(currentVolume) }) { Text("完了") }
+                }
+            }
+        }
+    }
+}
+
 /**
  * 繰り返し設定ダイアログ
  */
 @Composable
-fun AlarmRepeatDialog(
-    initialDays: String,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit
-) {
+fun AlarmRepeatDialog(initialDays: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     val dayOptions = listOf("月", "火", "水", "木", "金", "土", "日")
-
-    // 現在選択されている曜日をセットに変換
-    val initialSelected = if (initialDays == "毎日" || initialDays.isBlank()) {
-        emptySet()
-    } else {
-        initialDays.split(",").toSet()
-    }
-
+    val initialSelected = if (initialDays == "毎日" || initialDays.isBlank()) emptySet() else initialDays.split(",").toSet()
     var selectedDays by remember { mutableStateOf(initialSelected) }
     var repeatMode by remember { mutableStateOf(if (initialDays == "毎日" || initialDays.isBlank()) "毎日" else "曜日指定") }
 
@@ -241,66 +360,41 @@ fun AlarmRepeatDialog(
             Column(modifier = Modifier.padding(24.dp)) {
                 Text("繰り返し", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(16.dp))
-
-                // モード選択（毎日 vs 曜日指定）
                 Column(Modifier.selectableGroup()) {
                     listOf("毎日", "曜日指定").forEach { text ->
                         Row(
-                            Modifier.fillMaxWidth().height(48.dp)
-                                .selectable(
-                                    selected = (text == repeatMode),
-                                    onClick = { repeatMode = text },
-                                    role = Role.RadioButton
-                                ),
+                            Modifier.fillMaxWidth().height(48.dp).selectable(
+                                selected = (text == repeatMode),
+                                onClick = { repeatMode = text },
+                                role = Role.RadioButton
+                            ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(selected = (text == repeatMode), onClick = null)
-                            Text(text = text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
+                            Text(text = text, modifier = Modifier.padding(start = 16.dp))
                         }
                     }
                 }
-
-                // 曜日選択（「曜日指定」が選ばれているときのみ表示）
                 if (repeatMode == "曜日指定") {
-                    Spacer(Modifier.height(8.dp))
-                    Column {
-                        dayOptions.forEach { day ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().height(40.dp)
-                                    .clickable {
-                                        selectedDays = if (selectedDays.contains(day)) {
-                                            selectedDays - day
-                                        } else {
-                                            selectedDays + day
-                                        }
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = selectedDays.contains(day),
-                                    onCheckedChange = null
-                                )
-                                Text(text = "${day}曜日", modifier = Modifier.padding(start = 16.dp))
-                            }
+                    dayOptions.forEach { day ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(40.dp).clickable {
+                                selectedDays = if (selectedDays.contains(day)) selectedDays - day else selectedDays + day
+                            },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(checked = selectedDays.contains(day), onCheckedChange = null)
+                            Text(text = "${day}曜日", modifier = Modifier.padding(start = 16.dp))
                         }
                     }
                 }
-
                 Spacer(Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("キャンセル") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (repeatMode == "毎日") {
-                                onSave("") // 空文字を保存（UI側で毎日と解釈）
-                            } else {
-                                // 選択された曜日を 月,火,水 の形式で並び替えて保存
-                                val sortedResult = dayOptions.filter { selectedDays.contains(it) }.joinToString(",")
-                                onSave(sortedResult.ifBlank { "" }) // 何も選んでなければ空＝毎日
-                            }
-                        }
-                    ) { Text("OK") }
+                    Button(onClick = {
+                        val result = if (repeatMode == "毎日") "" else dayOptions.filter { selectedDays.contains(it) }.joinToString(",")
+                        onSave(result)
+                    }) { Text("OK") }
                 }
             }
         }
@@ -308,32 +402,20 @@ fun AlarmRepeatDialog(
 }
 
 /**
- * アラーム名編集用ダイアログ
+ * 名前編集ダイアログ
  */
 @Composable
-fun AlarmNameEditDialog(
-    initialName: String,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit
-) {
+fun AlarmNameEditDialog(initialName: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     var text by remember { mutableStateOf(initialName) }
-
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = Modifier.padding(24.dp)) {
                 Text("アラーム名を入力", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    placeholder = { Text("例: 起床") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = text, onValueChange = { text = it }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 Spacer(Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("キャンセル") }
-                    Spacer(Modifier.width(8.dp))
                     Button(onClick = { onSave(text) }) { Text("OK") }
                 }
             }
@@ -341,11 +423,11 @@ fun AlarmNameEditDialog(
     }
 }
 
-// --- 補助的なUIパーツ ---
+// --- 補助パーツ ---
 
 @Composable
 fun AlarmSwitchSettingItem(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -357,7 +439,7 @@ fun AlarmSwitchSettingItem(title: String, subtitle: String, checked: Boolean, on
 
 @Composable
 fun AlarmSimpleSettingItem(title: String, subtitle: String, onClick: () -> Unit = {}) {
-    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).clickable(onClick = onClick).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -369,7 +451,7 @@ fun AlarmSimpleSettingItem(title: String, subtitle: String, onClick: () -> Unit 
 @Composable
 fun AlarmDropdownSettingItem(title: String, selectedValue: String, options: List<String>, onValueChange: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).clickable { expanded = true }.padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).clickable { expanded = true }.padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(title, style = MaterialTheme.typography.bodyLarge)
         Text(selectedValue, color = MaterialTheme.colorScheme.primary)
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -381,7 +463,7 @@ fun AlarmDropdownSettingItem(title: String, selectedValue: String, options: List
 
 @Composable
 fun AlarmTimeSettingItem(time: String, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 72.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 72.dp).clickable(onClick = onClick).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column {
             Text("時刻", style = MaterialTheme.typography.bodyLarge)
             Text(time, fontSize = 32.sp, fontWeight = FontWeight.Bold)
@@ -392,27 +474,9 @@ fun AlarmTimeSettingItem(time: String, onClick: () -> Unit) {
 
 @Composable
 fun AlarmVolumeSettingItem(volume: Float, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).background(MaterialTheme.colorScheme.surface).clickable(onClick = onClick).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp).clickable(onClick = onClick).padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text("最大音量", style = MaterialTheme.typography.bodyLarge)
         Text("${(volume * 100).roundToInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     HorizontalDivider(modifier = Modifier.padding(start = 16.dp), thickness = 0.5.dp)
-}
-
-@Composable
-fun AlarmVolumeDialog(initialVolume: Float, onDismiss: () -> Unit, onSave: (Float) -> Unit) {
-    var currentVolume by remember { mutableFloatStateOf(initialVolume) }
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("最大音量を設定", style = MaterialTheme.typography.titleLarge)
-                Text("${(currentVolume * 100).roundToInt()}%", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-                Slider(value = currentVolume, onValueChange = { currentVolume = it })
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("キャンセル") }
-                    Button(onClick = { onSave(currentVolume) }) { Text("完了") }
-                }
-            }
-        }
-    }
 }

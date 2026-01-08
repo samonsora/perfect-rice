@@ -30,7 +30,8 @@ data class AlarmSetting(
     val snoozeCount: String,
     val volume: Float,
     val fadeIn: Boolean,
-    val type: AlarmType = AlarmType.WAKE_UP // 種類を判別する変数を追加（デフォルトを起床用に設定）
+    val type: AlarmType = AlarmType.WAKE_UP, // 種類を判別する変数を追加（デフォルトを起床用に設定）
+    val soundName: String = "alarmsound1"
 ){
     // "無制限" かどうかを判定する
     val isSnoozeUnlimited: Boolean

@@ -49,7 +49,15 @@ class AlarmService : Service() {
     }
 
     private fun startAlarmSound(setting: AlarmSetting?) {
-        val uri = "android.resource://${packageName}/${R.raw.alarmsound1}".toUri()
+        val soundName = setting?.soundName ?: "alarmsound1"
+
+        // 💡 2. 文字列からリソースIDを動的に取得
+        val resId = resources.getIdentifier(soundName, "raw", packageName)
+
+        // 万が一IDが見つからない場合のフォールバック
+        val finalResId = if (resId != 0) resId else R.raw.alarmsound1
+
+        val uri = "android.resource://${packageName}/$finalResId".toUri()
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
