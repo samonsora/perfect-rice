@@ -81,7 +81,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     0 -> if (isSleepMode) {
                         RirekiScreen()
                     } else {
-                        //MealScreen() // 🍳 ここ食履歴完成したらコメント外し！
+                        MealScreen() // 🍳 ここ食履歴完成したらコメント外し！
                     }
 
                     // 真ん中（ホーム）
