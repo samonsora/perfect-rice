@@ -2,6 +2,7 @@ package com.example.team1application
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -10,13 +11,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+
+var SnoozeIntervalData = 0
+var SnoozeCountData = 0
 class AlarmActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +46,9 @@ class AlarmActivity : ComponentActivity() {
         // 文字列から"分"を除去して数値に変換する処理をここで行います
         val snoozeIntervalStr = currentSetting?.snoozeInterval?.replace("分", "") ?: "5"
         val snoozeInterval = snoozeIntervalStr.toIntOrNull() ?: 5
-
+        //履歴に受け渡すようにglobalに
+        SnoozeIntervalData = snoozeInterval
+        Log.d("intarval", "スヌーズ間隔: ${SnoozeIntervalData}分")
         // 4. 現在の回数を Intent から取得
         val currentSnoozeCount = intent.getIntExtra("CURRENT_SNOOZE_COUNT", 0)
 
@@ -53,6 +64,8 @@ class AlarmActivity : ComponentActivity() {
                     if (isUnlimited || currentSnoozeCount < maxSnoozeCount) {
                         snoozeAndFinish(alarmId, currentSnoozeCount + 1, snoozeInterval)
                     }
+                    Log.d("snoozecount", "スヌーズ回数: ${SnoozeCountData}回")
+
                 }
             )
         }
@@ -60,12 +73,73 @@ class AlarmActivity : ComponentActivity() {
 
     private fun stopAlarmAndFinish() {
         stopService(Intent(this, AlarmService::class.java))
+        //ここで履歴用のスヌーズ回数と間隔を受け渡す処理を記述する。
+
+        saveSleepRecord()
+
+
+
         finish()
+    }
+    private fun saveSleepRecord() {
+        val dataManager = SleepDataManager(this)
+        val records = dataManager.loadRecords().toMutableList()
+
+        // 現在の時刻を取得 (起床時刻)
+        val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdfDate = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+        val now = Date()
+
+        val wakeUpTimeStr = sdfTime.format(now)
+        val dateStr = sdfDate.format(now)
+
+        // 設定から就寝時刻（あるいは設定時刻）を取得
+        // ※本来はAlarmSettingから取得すべきですが、簡易的に現在の時刻から計算、
+        // もしくはIntentで渡された設定時刻を使用します。
+        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+        val allAlarms = AlarmDataStore.loadAlarms(this)
+        val currentSetting = allAlarms.find { it.id == alarmId }
+        val scheduledTime = currentSetting?.time ?: "00:00"
+
+        // scheduledTime（HH:mm）をDateに変換
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val baseTime = timeFormat.parse(scheduledTime)
+
+        // スヌーズでずらす分数（回数 × 間隔）
+        val snoozeOffsetMinutes = SnoozeCountData * SnoozeIntervalData
+
+        // Calendarで分を加算
+        val calendar = java.util.Calendar.getInstance()
+        calendar.time = baseTime!!
+        calendar.add(java.util.Calendar.MINUTE, snoozeOffsetMinutes)
+
+        // 実際の起床時間（スヌーズ反映後）
+        val actualWakeUpTimeStr = timeFormat.format(calendar.time)
+
+        // 睡眠時間の計算 (calculateDuration関数を利用)
+        // 就寝用(BEDTIME)アラームの場合は「就寝時刻」として記録を分ける工夫が必要ですが、
+        // ここでは「起床(WAKE_UP)」時に1つのレコードとして完結させる例です。
+        val duration = calculateDuration(scheduledTime, actualWakeUpTimeStr, SnoozeCountData)
+
+        val newRecord = SleepRecord(
+            date = dateStr,
+            sleepTime = duration,           // 計算された睡眠時間
+            wakeUpTime = actualWakeUpTimeStr ,     // 実際に止めた時刻
+            bedtime = scheduledTime,        // 本来鳴るはずだった時刻（または設定された就寝時刻）
+            snoozeCount = SnoozeCountData,  // グローバル変数から取得
+            snoozeDuration = "${SnoozeIntervalData}分" // グローバル変数から取得
+        )
+
+        // 同じ日付のデータがあれば上書き、なければ追加（ロジックは用途に合わせて調整）
+        records.add(newRecord)
+        dataManager.saveRecords(records)
+
+        Log.d("AlarmActivity", "履歴を保存しました: $newRecord")
     }
 
     private fun snoozeAndFinish(alarmId: Int, nextCount: Int, interval: Int) {
         val snoozeScheduler = SnoozeScheduler(this)
-
+        SnoozeCountData = nextCount
         // 次回のインテントに「次の回数」を渡す必要があるため、
         // SnoozeSchedulerの引数にnextCountを渡せるよう修正が必要です
         snoozeScheduler.scheduleSnooze(alarmId, interval, nextCount)
@@ -73,6 +147,7 @@ class AlarmActivity : ComponentActivity() {
         stopService(Intent(this, AlarmService::class.java))
         finish()
     }
+
 }
 
 @Composable
@@ -99,7 +174,11 @@ fun AlarmScreen(
         if (mainMessage.isNotEmpty()) {
             Text(
                 text = mainMessage,
-                style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified)
+                // fontSizeを大きく設定（例: 32sp）
+                fontSize = 32.sp,
+                // 太字にするとより見やすくなります
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
         }
 
@@ -110,13 +189,15 @@ fun AlarmScreen(
             } else {
                 "スヌーズ回数: $currentCount / $maxCount 回"
             }
-            Text(text = countText)
+            Text(text = countText,
+                fontSize = 18.sp)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // 3. 停止ボタン（これは共通）
-        Button(onClick = onStopClick) {
+        Button(onClick = onStopClick,
+            modifier = Modifier.size(width = 200.dp, height = 60.dp)) {
             Text(if (alarmType == "BEDTIME") "了解" else "止める")
         }
 
@@ -126,10 +207,13 @@ fun AlarmScreen(
             val canSnooze = isUnlimited || currentCount < maxCount
             Button(
                 onClick = onSnoozeClick,
+                modifier = Modifier.size(width = 200.dp, height = 60.dp),
                 enabled = canSnooze
             ) {
                 Text(if (canSnooze) "スヌーズ" else "スヌーズ上限です")
             }
         }
     }
+
+
 }
