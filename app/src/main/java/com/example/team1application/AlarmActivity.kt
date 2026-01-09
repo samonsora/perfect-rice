@@ -101,16 +101,31 @@ class AlarmActivity : ComponentActivity() {
         val currentSetting = allAlarms.find { it.id == alarmId }
         val scheduledTime = currentSetting?.time ?: "00:00"
 
+        // scheduledTime（HH:mm）をDateに変換
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val baseTime = timeFormat.parse(scheduledTime)
+
+        // スヌーズでずらす分数（回数 × 間隔）
+        val snoozeOffsetMinutes = SnoozeCountData * SnoozeIntervalData
+
+        // Calendarで分を加算
+        val calendar = java.util.Calendar.getInstance()
+        calendar.time = baseTime!!
+        calendar.add(java.util.Calendar.MINUTE, snoozeOffsetMinutes)
+
+        // 実際の起床時間（スヌーズ反映後）
+        val actualWakeUpTimeStr = timeFormat.format(calendar.time)
+
         // 睡眠時間の計算 (calculateDuration関数を利用)
         // 就寝用(BEDTIME)アラームの場合は「就寝時刻」として記録を分ける工夫が必要ですが、
         // ここでは「起床(WAKE_UP)」時に1つのレコードとして完結させる例です。
-        val duration = calculateDuration(scheduledTime, wakeUpTimeStr, SnoozeCountData)
+        val duration = calculateDuration(scheduledTime, actualWakeUpTimeStr, SnoozeCountData)
 
         val newRecord = SleepRecord(
             date = dateStr,
             sleepTime = duration,           // 計算された睡眠時間
-            wakeUpTime = scheduledTime,     // 実際に止めた時刻
-            bedtime = wakeUpTimeStr,        // 本来鳴るはずだった時刻（または設定された就寝時刻）
+            wakeUpTime = actualWakeUpTimeStr ,     // 実際に止めた時刻
+            bedtime = scheduledTime,        // 本来鳴るはずだった時刻（または設定された就寝時刻）
             snoozeCount = SnoozeCountData,  // グローバル変数から取得
             snoozeDuration = "${SnoozeIntervalData}分" // グローバル変数から取得
         )
