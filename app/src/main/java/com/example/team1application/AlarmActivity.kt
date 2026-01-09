@@ -72,13 +72,20 @@ class AlarmActivity : ComponentActivity() {
     }
 
     private fun stopAlarmAndFinish() {
+        // 1. 音を止める命令を出す
         stopService(Intent(this, AlarmService::class.java))
-        //ここで履歴用のスヌーズ回数と間隔を受け渡す処理を記述する。
 
+        // 2. Serviceの終了を待たず、ここで即座にメモ（フラグ）を書き換える
+        // commit() を使うことで、次の行に行く前に書き込みを完了させます
+        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit()
+            .putBoolean("is_ringing", false)
+            .putInt("ringing_alarm_id", -1)
+            .commit() // apply() ではなく commit() にするとより確実です
+
+        // 3. 履歴保存
         saveSleepRecord()
 
-
-
+        // 4. 最後に画面を閉じる
         finish()
     }
     private fun saveSleepRecord() {
