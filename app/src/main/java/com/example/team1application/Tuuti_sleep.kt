@@ -21,7 +21,6 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     // 時刻判定を開始する、就寝時刻より前の分数 (例: 120分 = 2時間前からチェック開始)
     private val checkingBeforeMinutes = 60
 
-
     /**
      * WorkManagerから呼び出されるメインの処理メソッド
      */

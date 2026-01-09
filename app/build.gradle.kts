@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,6 +12,10 @@ android {
     namespace = "com.example.team1application"
     compileSdk = 36
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.example.team1application"
         minSdk = 24
@@ -17,6 +24,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        val properties = Properties()
+        val propertiesFile = project.rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            properties.load(FileInputStream(propertiesFile))
+        }
+        val apiKey = properties.getProperty("GEMINI_API_KEY")?.trim( )?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+
     }
 
     buildTypes {
@@ -72,5 +87,8 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
 
 }
