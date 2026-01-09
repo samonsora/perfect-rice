@@ -30,9 +30,7 @@ class MainActivity : ComponentActivity() {
     // 🔔 通知許可リクエスト用ランチャー
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        // 許可結果に応じた処理が必要ならここに記述
-    }
+    ) { isGranted: Boolean -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,17 +40,8 @@ class MainActivity : ComponentActivity() {
         alarmInitializer = AlarmInitializer(applicationContext)
         alarmInitializer.initializeAlarms()
 
-        // --- 2. 鳴動中チェック：通知がなくてもアプリ起動で停止画面へ飛ばす ---
-        val prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
-        val isRinging = prefs.getBoolean("is_ringing", false)
-
-        if (isRinging) {
-            // MainActivityの上に重ねるようにAlarmActivityを起動
-            val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            startActivity(alarmIntent)
-        }
+        // --- 2. 鳴動中チェック：起動時に確認 ---
+        checkRingingAndNavigate()
 
         // --- 3. 通知許可の確認 (Android 13以上) ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -67,7 +56,6 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var isTitle by remember { mutableStateOf(true) }
 
-                    // ✨ 画面切り替えアニメーション（タイトル -> ホーム）
                     Crossfade(
                         targetState = isTitle,
                         label = "画面切り替え",
@@ -91,24 +79,45 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // アプリがバックグラウンドから戻った時にもチェック
+        checkRingingAndNavigate()
         checkAllPermissionsSequence()
     }
 
     /**
-     * 必要な権限を順番にチェックし、足りない場合は設定画面へ誘導する
+     * 追加/修正：共有メモリから鳴動中の情報を取得して遷移
      */
+    private fun checkRingingAndNavigate() {
+        val prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
+        val isRinging = prefs.getBoolean("is_ringing", false)
+
+        if (isRinging) {
+            // Serviceが保存した鳴動情報を取得
+            val alarmId = prefs.getInt("ringing_alarm_id", -1)
+            val alarmType = prefs.getString("ringing_alarm_type", "")
+            val currentCount = prefs.getInt("ringing_snooze_count", 0)
+
+            val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                // ここで情報を渡すことでAlarmActivityが正常に動作する
+                putExtra("ALARM_ID", alarmId)
+                putExtra("ALARM_TYPE", alarmType)
+                putExtra("CURRENT_SNOOZE_COUNT", currentCount)
+            }
+            startActivity(alarmIntent)
+        }
+    }
+
     private fun checkAllPermissionsSequence() {
-        // 1. 正確なアラーム権限 (Android 12以上)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(AlarmManager::class.java)
             if (!alarmManager.canScheduleExactAlarms()) {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
                 startActivity(intent)
-                return // 設定から戻るまで次のチェックは行わない
+                return
             }
         }
 
-        // 2. 使用状況アクセス権限
         if (!isUsageAccessGranted(this)) {
             requestUsageAccess(this)
             return

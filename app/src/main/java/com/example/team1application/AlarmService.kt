@@ -14,6 +14,7 @@ import android.os.IBinder
 import android.os.Looper
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import java.io.File
 
 class AlarmService : Service() {
 
@@ -24,41 +25,42 @@ class AlarmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val alarmId = intent?.getIntOfDefault("ALARM_ID", -1) ?: -1
+        val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
         val alarmType = intent?.getStringExtra("ALARM_TYPE") ?: ""
         val currentSnoozeCount = intent?.getIntExtra("CURRENT_SNOOZE_COUNT", 0) ?: 0
 
-        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit { putBoolean("is_ringing", true) }
+        // MainActivityから読み取れるように詳細情報を保存
+        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit {
+            putBoolean("is_ringing", true)
+            putInt("ringing_alarm_id", alarmId)
+            putString("ringing_alarm_type", alarmType)
+            putInt("ringing_snooze_count", currentSnoozeCount)
+        }
 
-        // 1. データストアから最新の設定を読み込む
+        val alarmActivityIntent = Intent(this, AlarmActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra("ALARM_ID", alarmId)
+            putExtra("ALARM_TYPE", alarmType)
+            putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount)
+        }
+        startActivity(alarmActivityIntent)
+
         val allAlarms = AlarmDataStore.loadAlarms(this)
         val setting = allAlarms.find { it.id == alarmId }
 
-        // 2. 通知の開始（Foreground Service 必須）
-        // アラーム名がある場合は通知に表示
         startForegroundNotification(setting?.name ?: "アラーム", alarmType, alarmId, currentSnoozeCount)
 
-        // 3. アラーム音の再生
-        if (setting != null) {
-            startAlarmSound(setting)
-        } else {
-            // 設定が見つからない場合のフォールバック
-            startAlarmSound(null)
-        }
+        // 設定を渡して音を再生
+        startAlarmSound(setting)
 
         return START_STICKY
     }
 
+    /**
+     * 選択された曲の設定に従って再生する
+     */
     private fun startAlarmSound(setting: AlarmSetting?) {
         val soundName = setting?.soundName ?: "alarmsound1"
-
-        // 💡 2. 文字列からリソースIDを動的に取得
-        val resId = resources.getIdentifier(soundName, "raw", packageName)
-
-        // 万が一IDが見つからない場合のフォールバック
-        val finalResId = if (resId != 0) resId else R.raw.alarmsound1
-
-        val uri = "android.resource://${packageName}/$finalResId".toUri()
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -67,27 +69,46 @@ class AlarmService : Service() {
 
         mediaPlayer = MediaPlayer().apply {
             setAudioAttributes(audioAttributes)
-            setDataSource(this@AlarmService, uri)
-            setAudioAttributes(audioAttributes)
-            isLooping = true
-            prepare()
 
-            val targetVolume = setting?.volume ?: 0.5f
-            if (setting?.fadeIn == true) {
-                setVolume(0f, 0f)
-                startFadeIn(targetVolume)
-            } else {
-                setVolume(targetVolume, targetVolume)
+            try {
+                // 1. 選択された名前がデフォルトのリソース音(alarmsound1)かどうか判定
+                if (soundName == "alarmsound1") {
+                    val resId = resources.getIdentifier(soundName, "raw", packageName)
+                    val finalResId = if (resId != 0) resId else R.raw.alarmsound1
+                    setDataSource(this@AlarmService, "android.resource://$packageName/$finalResId".toUri())
+                } else {
+                    // 2. それ以外（追加された曲）の場合は、内部ストレージのファイルを直接指定
+                    val customFile = File(filesDir, "$soundName.mp3")
+                    if (customFile.exists()) {
+                        setDataSource(customFile.absolutePath)
+                    } else {
+                        // ファイルが見つからない場合のセーフティとしてデフォルトを再生
+                        val resId = resources.getIdentifier("alarmsound1", "raw", packageName)
+                        setDataSource(this@AlarmService, "android.resource://$packageName/$resId".toUri())
+                    }
+                }
+
+                isLooping = true
+                prepare()
+
+                val targetVolume = setting?.volume ?: 0.5f
+                if (setting?.fadeIn == true) {
+                    setVolume(0f, 0f)
+                    startFadeIn(targetVolume)
+                } else {
+                    setVolume(targetVolume, targetVolume)
+                }
+                start()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-
-            start()
         }
     }
 
     private fun startFadeIn(targetVolume: Float) {
         currentVolume = 0.0f
-        val interval = 1000L // 1秒ごとに更新
-        val step = targetVolume / 20f // 20秒かけて最大にする
+        val interval = 1000L
+        val step = targetVolume / 20f
 
         val runnable = object : Runnable {
             override fun run() {
@@ -113,7 +134,7 @@ class AlarmService : Service() {
             ).apply {
                 description = "アラーム鳴動中に表示されます"
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                setSound(null, null) // 通知音自体は MediaPlayer で鳴らすので消音
+                setSound(null, null)
                 enableVibration(true)
             }
             notificationManager.createNotificationChannel(channel)
@@ -123,7 +144,7 @@ class AlarmService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
             putExtra("ALARM_ID", alarmId)
             putExtra("ALARM_TYPE", alarmType)
-            putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount) // ここが重要！
+            putExtra("CURRENT_SNOOZE_COUNT", currentSnoozeCount)
         }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
@@ -137,8 +158,7 @@ class AlarmService : Service() {
             Notification.Builder(this, channelId)
         } else {
             @Suppress("DEPRECATION")
-            Notification.Builder(this)
-                .setPriority(Notification.PRIORITY_HIGH) // API 26 未満のための互換性
+            Notification.Builder(this).setPriority(Notification.PRIORITY_HIGH)
         }
 
         val notification = notificationBuilder
@@ -146,7 +166,7 @@ class AlarmService : Service() {
             .setContentTitle(title)
             .setContentText("アラームが鳴っています")
             .setCategory(Notification.CATEGORY_ALARM)
-            .setFullScreenIntent(fullScreenPendingIntent, true) // フルスクリーン
+            .setFullScreenIntent(fullScreenPendingIntent, true)
             .setContentIntent(fullScreenPendingIntent)
             .setAutoCancel(false)
             .setOngoing(true)
@@ -163,14 +183,5 @@ class AlarmService : Service() {
         mediaPlayer = null
         getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit { putBoolean("is_ringing", false) }
         super.onDestroy()
-    }
-}
-
-// Intent拡張関数（APIレベルによる挙動の差を吸収）
-fun Intent.getIntOfDefault(key: String, defaultValue: Int): Int {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        this.getIntExtra(key, defaultValue)
-    } else {
-        this.getIntExtra(key, defaultValue)
     }
 }

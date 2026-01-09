@@ -52,7 +52,17 @@ fun AlarmSetUI(
     var alarmDays by remember { mutableStateOf(existingAlarm?.days ?: "") }
 
     val soundOptions = remember {
-        mutableStateListOf("alarmsound1", "+アラーム音を追加", "-アラーム音を削除")
+        val baseOptions = mutableStateListOf("alarmsound1")
+
+        // 内部ストレージにある .mp3 ファイルをスキャンして追加
+        val files = context.filesDir.listFiles { file -> file.extension == "mp3" }
+        files?.forEach { file ->
+            baseOptions.add(file.nameWithoutExtension)
+        }
+
+        baseOptions.add("+アラーム音を追加")
+        baseOptions.add("-アラーム音を削除")
+        baseOptions
     }
     var alarmSound by remember { mutableStateOf(existingAlarm?.soundName ?: "alarmsound1") }
 

@@ -123,7 +123,6 @@ fun AlarmScreen(
         // 4. 起床用（WAKE_UP）の場合のみスヌーズボタンを表示
         if (alarmType == "WAKE_UP") {
             Spacer(modifier = Modifier.height(16.dp))
-
             val canSnooze = isUnlimited || currentCount < maxCount
             Button(
                 onClick = onSnoozeClick,
