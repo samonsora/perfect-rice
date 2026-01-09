@@ -3,30 +3,32 @@ package com.example.team1application
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items // itemsを使うために必要
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings // これが必要です
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    // SnapshotStateListとして状態管理
+
+    // アラームデータのロード
     val allAlarms = remember {
         AlarmDataStore.loadAlarms(context).toMutableStateList()
     }
 
-    // --- 表示フィルタの状態 ---
+    // --- 各種状態 ---
     var showOnlyActive by remember { mutableStateOf(false) }
     var showWakeUp by remember { mutableStateOf(true) }
     var showBedtime by remember { mutableStateOf(true) }
@@ -36,9 +38,12 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
     var timeForNewAlarm by remember { mutableStateOf<String?>(null) }
     var editingAlarmId by remember { mutableStateOf<Int?>(null) }
 
+    // 歯車ボタンの状態
+    var showExtraSettings by remember { mutableStateOf(false) }
+
     val editingAlarm = allAlarms.find { it.id == editingAlarmId }
 
-    // --- A. 詳細設定画面 ---
+    // --- A. 詳細設定画面への遷移 ---
     if (timeForNewAlarm != null || editingAlarm != null) {
         val isNew = editingAlarm == null
         val initialTime = timeForNewAlarm ?: editingAlarm?.time ?: "07:00"
@@ -75,7 +80,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
         )
     }
 
-    // --- C. メインリスト画面 (Scaffold 導入) ---
+    // --- C. メインリスト画面 ---
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -114,8 +119,8 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
     ) { innerPadding ->
         Column(modifier = modifier.padding(innerPadding).fillMaxSize().padding(16.dp)) {
 
-            // 💡 型を明示的に指定してフィルタリング
-            val filteredAlarms: List<AlarmSetting> = allAlarms.filter { alarm ->
+            // フィルタリング処理
+            val filteredAlarms = allAlarms.filter { alarm ->
                 val activeFilter = if (showOnlyActive) alarm.isActive else true
                 val typeFilter = when (alarm.type) {
                     AlarmType.WAKE_UP -> showWakeUp
@@ -125,8 +130,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
             }
 
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // 💡 引数に型を明示
-                items(items = filteredAlarms, key = { it.id }) { alarm: AlarmSetting ->
+                items(items = filteredAlarms, key = { it.id }) { alarm ->
                     AlarmSettingCard(
                         alarm = alarm,
                         onToggleActive = { id, active ->
@@ -144,11 +148,54 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = { showSetupDialog = true },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                Text("➕ 新しいアラームを設定")
+            // --- 下部操作エリア ---
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
+                if (showExtraSettings) {
+                    Button(
+                        onClick = { /* 監視設定へ */ },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Text("📱 監視対象アプリの設定")
+                    }
+                    Button(
+                        onClick = { /* 通知設定へ */ },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Text("🔔 就寝前通知の設定")
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { showSetupDialog = true },
+                        modifier = Modifier.weight(1f).height(56.dp)
+                    ) {
+                        Text("➕ 新しいアラームを設定")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    FilledIconButton(
+                        onClick = { showExtraSettings = !showExtraSettings },
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "設定"
+                        )
+                    }
+                }
             }
         }
     }
