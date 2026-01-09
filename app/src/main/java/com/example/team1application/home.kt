@@ -29,26 +29,22 @@ import java.util.*
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     // 📖 ページ設定
-    val pagerState = rememberPagerState(pageCount = { 7 }, initialPage = 2)
     val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 1)
     val scope = rememberCoroutineScope()
 
     // 🌙 睡眠モードか食事モードか
     var isSleepMode by remember { mutableStateOf(true) }
 
-    // ⚙️ 設定画面を開いているかどうか（true = 設定画面, false = ホーム画面）
+    // ⚙️ 設定画面を開いているかどうか
     var isSettingsOpen by remember { mutableStateOf(false) }
 
     // ✨ 設定画面が開いていたら、そっちを表示！
     if (isSettingsOpen) {
-        // 設定画面（戻るボタンを押したら isSettingsOpen を false にする）
         SettingsScreen(onBack = { isSettingsOpen = false })
     } else {
-        // いつものホーム画面
         Scaffold(
             modifier = modifier.fillMaxSize(),
             bottomBar = {
-                // ... (NavigationBarの中身は変更なし！) ...
                 NavigationBar {
                     val leftLabel = if (isSleepMode) "睡眠記録" else "食事記録"
                     val leftIcon = if (isSleepMode) Icons.Default.Star else Icons.Default.Edit
@@ -81,14 +77,27 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     .padding(bottom = innerPadding.calculateBottomPadding())
             ) { page ->
                 when (page) {
-                    0 -> if (isSleepMode) RirekiScreen() else FoodRecordScreen()
-                    // 👇 ここ！設定ボタンを押した時の処理（onSettingsClick）を渡すよ！
+                    // 👇 【ここを変更！】左画面を MealScreen に変えたよ！
+                    0 -> if (isSleepMode) {
+                        RirekiScreen()
+                    } else {
+                        //MealScreen() // 🍳 ここ食履歴完成したらコメント外し！
+                    }
+
+                    // 真ん中（ホーム）
                     1 -> HomeMainContent(
                         isSleepMode = isSleepMode,
                         onModeChange = { isSleepMode = it },
                         onSettingsClick = { isSettingsOpen = true }
                     )
-                    2 -> if (isSleepMode) AlarmScreen() else FoodInputScreen()
+
+                    // 右画面（アラーム / 食入力）
+                    2 -> if (isSleepMode) {
+                        AlarmScreen()
+                    } else {
+                        FoodInputScreen()
+                    }
+
                     else -> Text("準備中...", modifier = Modifier.fillMaxSize(), color = Color.Gray)
                 }
             }
@@ -104,20 +113,18 @@ data class BottomNavItem(
 )
 
 // --------------------------------------------------
-// 🏠 ホーム画面の中身（時計とボタン）
+// 🏠 ホーム画面の中身
 // --------------------------------------------------
 @Composable
 fun HomeMainContent(
     isSleepMode: Boolean,
     onModeChange: (Boolean) -> Unit,
-    onSettingsClick: () -> Unit // 👈 これを追加！（設定ボタンが押されたら知らせる）
+    onSettingsClick: () -> Unit
 ) {
-    // ... (時計や画像の変数はそのまま) ...
     var timeString by remember { mutableStateOf("00:00") }
     var currentBgImage by remember { mutableStateOf(R.drawable.banana) }
 
     LaunchedEffect(Unit) {
-        // ... (時計のロジックはそのまま) ...
         while (isActive) {
             val calendar = Calendar.getInstance()
             calendar.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
@@ -139,7 +146,7 @@ fun HomeMainContent(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // 🖼️ 背景画像 (そのまま)
+        // 背景
         Image(
             painter = painterResource(id = currentBgImage),
             contentDescription = "時間帯背景",
@@ -148,13 +155,12 @@ fun HomeMainContent(
             alpha = 0.8f
         )
 
-        // 📝 時計と操作パネル (そのまま)
+        // コンテンツ
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ... (時計エリアとボタンエリアのコードはそのまま変更なし！) ...
-            // 🟥 時計エリア
+            // 時計エリア
             Box(
                 modifier = Modifier.weight(1f).fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -173,7 +179,7 @@ fun HomeMainContent(
                 )
             }
 
-            // 🟦 下のエリア（ボタン）
+            // ボタンエリア
             Column(
                 modifier = Modifier
                     .weight(2f)
@@ -182,7 +188,6 @@ fun HomeMainContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom
             ) {
-                // モード切り替えスイッチ (そのまま)
                 Row(
                     modifier = Modifier
                         .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(50))
@@ -205,15 +210,14 @@ fun HomeMainContent(
             }
         }
 
-        // ✨✨✨ ここに設定ボタンを追加！ ✨✨✨
-        // Boxの機能を使って「右下」に配置するよ！
+        // 設定ボタン
         FloatingActionButton(
             onClick = onSettingsClick,
             modifier = Modifier
-                .align(Alignment.BottomEnd) // 右下に配置
-                .padding(24.dp)             // 端っこすぎないように余白
-                .size(56.dp),               // 標準的なサイズ
-            containerColor = Color.White.copy(alpha = 0.9f), // 少し透け感のある白
+                .align(Alignment.BottomEnd)
+                .padding(24.dp)
+                .size(56.dp),
+            containerColor = Color.White.copy(alpha = 0.9f),
             contentColor = Color.Black
         ) {
             Icon(Icons.Default.Settings, contentDescription = "設定画面へ")
@@ -221,7 +225,6 @@ fun HomeMainContent(
     }
 }
 
-// ✨ おしゃれな切り替えボタンの部品
 @Composable
 fun SwitchButton(
     text: String,
@@ -231,7 +234,7 @@ fun SwitchButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) Color(0xFF6200EE) else Color.Transparent, // 選択時は紫、未選択は透明
+            containerColor = if (isSelected) Color(0xFF6200EE) else Color.Transparent,
             contentColor = if (isSelected) Color.White else Color.Black
         ),
         elevation = if(isSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(0.dp),
@@ -240,22 +243,3 @@ fun SwitchButton(
         Text(text, fontWeight = FontWeight.Bold)
     }
 }
-
-
-// --- 🚧 以下、仮の画面（まだ作ってない場合のダミー） ---
-//のちに削除
-
-@Composable
-fun FoodRecordScreen() {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFFFE0B2)), contentAlignment = Alignment.Center) {
-        Text("左画面：食事記録（仮）", fontSize = 24.sp)
-    }
-}
-
-@Composable
-fun FoodInputScreen() {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFFFCC80)), contentAlignment = Alignment.Center) {
-        Text("右画面：食事入力（仮）", fontSize = 24.sp)
-    }
-}
-// 既存の RirekiScreen() や AlarmScreen() はそのまま使ってね！

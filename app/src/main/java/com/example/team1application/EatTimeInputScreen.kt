@@ -6,20 +6,29 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EatTimeInputScreen(
+fun FoodInputScreen(
+    // 保存ボタンが押された時の処理（今は空っぽでもOK）
     onSave: (String, String, Int, Int) -> Unit = { _, _, _, _ -> }
 ) {
     val context = LocalContext.current
+
+    // スクロールできるようにしておく（画面が小さくても安心！）
+    val scrollState = rememberScrollState()
 
     // 食事区分
     var mealType by remember { mutableStateOf("朝ごはん") }
@@ -53,6 +62,8 @@ fun EatTimeInputScreen(
             ActivityResultContracts.GetContent()
         ) { uri ->
             uri?.let {
+                // ※ 古いAndroid手法だけど今はこれで動かすね！
+                @Suppress("DEPRECATION")
                 val bitmap = MediaStore.Images.Media.getBitmap(
                     context.contentResolver,
                     it
@@ -64,6 +75,8 @@ fun EatTimeInputScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.White) // 背景を白にしておく
+            .verticalScroll(scrollState) // 縦スクロール有効化
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -94,7 +107,8 @@ fun EatTimeInputScreen(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
-                    Text(type)
+                    // 文字数が多いと溢れるから少し小さくするかも？
+                    Text(type, maxLines = 1)
                 }
             }
         }
@@ -131,7 +145,7 @@ fun EatTimeInputScreen(
             onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("写真を撮る")
+            Text("写真を撮る 📷")
         }
 
         // ギャラリー
@@ -139,7 +153,7 @@ fun EatTimeInputScreen(
             onClick = { galleryLauncher.launch("image/*") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("ギャラリーから選ぶ")
+            Text("ギャラリーから選ぶ 🖼️")
         }
 
         // 保存
@@ -147,10 +161,14 @@ fun EatTimeInputScreen(
             onClick = {
                 onSave(mealType, mealName, hour, minute)
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
         ) {
-            Text("保存")
+            Text("保存する")
         }
+
+        // ナビゲーションバーに隠れないように余白
+        Spacer(modifier = Modifier.height(80.dp))
     }
 
     // ===== 時刻選択ダイアログ =====
