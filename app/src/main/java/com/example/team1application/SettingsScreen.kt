@@ -8,42 +8,50 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.team1application.ui.theme.Team1ApplicationTheme
+
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
 
     val context = LocalContext.current
-    val repo = remember { FontSizeRepository(context) }
+    val repo = remember { SettingsRepository(context) }
+    val scope = rememberCoroutineScope()
 
-    // 🔹 DataStore から読み込んだ値（保存された文字サイズ）
+    // ---------- 文字サイズ ----------
     val savedFontSize by repo.fontSizeFlow.collectAsState(initial = 20f)
-
-    // 🔹 画面上のプレビュー用
     var previewFontSize by remember { mutableStateOf(savedFontSize) }
 
-    // DataStore から値が更新されたら、プレビューも更新
     LaunchedEffect(savedFontSize) {
         previewFontSize = savedFontSize
     }
 
-    val scope = rememberCoroutineScope()
+    // ---------- ダークモード ----------
+    val savedDarkMode by repo.darkModeFlow.collectAsState(initial = false)
+    var darkMode by remember { mutableStateOf(savedDarkMode) }
+
+    LaunchedEffect(savedDarkMode) {
+        darkMode = savedDarkMode
+    }
 
     Column(
-        Modifier.fillMaxSize().padding(16.dp)
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
 
         Text("設定", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // プレビュー
+        // ▼ 文字サイズプレビュー
         Text("文字サイズプレビュー", fontSize = previewFontSize.sp)
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Text("文字サイズ：${previewFontSize.toInt()}")
 
-        // スライダー（これは保存しない）
         Slider(
             value = previewFontSize,
             onValueChange = { previewFontSize = it },
@@ -52,12 +60,27 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // 🔵 保存ボタン
+        // ▼ ダークモードスイッチ（追加）
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("ダークモード")
+            Switch(
+                checked = darkMode,
+                onCheckedChange = { enabled ->
+                    darkMode = enabled
+                    scope.launch { repo.saveDarkMode(enabled) }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        // 文字サイズ保存
         Button(
             onClick = {
-                scope.launch {
-                    repo.saveFontSize(previewFontSize)
-                }
+                scope.launch { repo.saveFontSize(previewFontSize) }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -66,12 +89,23 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 戻るボタン
+        // 戻る
         Button(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("戻る")
         }
+
     }
 }
+
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    Team1ApplicationTheme {
+        SettingsScreen(onBack = {})
+    }
+}
+

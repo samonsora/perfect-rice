@@ -29,6 +29,7 @@ import java.util.*
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     // 📖 ページ設定
+    val pagerState = rememberPagerState(pageCount = { 7 }, initialPage = 2)
     val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 1)
     val scope = rememberCoroutineScope()
 
