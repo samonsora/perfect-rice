@@ -24,6 +24,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        val properties = Properties()
+        val propertiesFile = project.rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            properties.load(FileInputStream(propertiesFile))
+        }
+        val apiKey = properties.getProperty("GEMINI_API_KEY")?.trim( )?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
 
     }
 
