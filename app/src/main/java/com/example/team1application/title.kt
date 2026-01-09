@@ -41,9 +41,10 @@ fun TitleScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val repo = remember { FontSizeRepository(context) } // 文字の変更
-    val textSize by repo.fontSizeFlow.collectAsState(initial = 20f) // 文字の変更
+    val  repo = remember { SettingsRepository(context) } // 文字の変更
+    val fontSize by repo.fontSizeFlow.collectAsState(initial = 16f) // 文字の変更
     val mediaPlayer = try { MediaPlayer.create(context, R.raw.tap_sound) } catch (e: Exception) { null }
+
 
     Box(
         modifier = modifier
@@ -78,7 +79,7 @@ fun TitleScreen(
         ) {
             Text(
                 text = "　生活習慣　\nリペアキット",
-                style = MaterialTheme.typography.displayMedium,
+                fontSize = fontSize.sp, // 文字の変更,
                 fontWeight = FontWeight.Bold,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 color = Color.White
@@ -87,7 +88,7 @@ fun TitleScreen(
             Text(
                 text = "画面をタップしてスタート",
                 modifier = Modifier.padding(top = 16.dp, bottom = 32.dp),
-                style = MaterialTheme.typography.bodyLarge,
+                fontSize = fontSize.sp,// 文字の変更
                 color = Color.White
             )
 

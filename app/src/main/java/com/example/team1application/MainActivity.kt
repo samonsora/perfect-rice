@@ -28,6 +28,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+
 
 import com.example.team1application.ui.theme.Team1ApplicationTheme
 import androidx.compose.animation.Crossfade
@@ -47,11 +53,23 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val repo = SettingsRepository(applicationContext)
+            val factory = SettingsViewModelFactory(repo)
+
+            val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
+
+            val darkMode by settingsViewModel
+                .darkMode
+                .collectAsStateWithLifecycle()
+
             // コンフリクト激戦区
-            Team1ApplicationTheme {
+            Team1ApplicationTheme(
+                darkTheme = darkMode
+            ) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     // 🪄 魔法のスイッチ
                     var isTitle by remember { mutableStateOf(true) }
+
 
                     val alarmManager = getSystemService(AlarmManager::class.java)
                     if (!alarmManager.canScheduleExactAlarms()) {

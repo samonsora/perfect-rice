@@ -41,7 +41,7 @@ import java.util.TimeZone
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     // 📖 ページ設定
-    val pagerState = rememberPagerState(pageCount = { 5 }, initialPage = 2)
+    val pagerState = rememberPagerState(pageCount = { 7 }, initialPage = 2)
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -81,6 +81,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 1 -> RirekiScreen()
                 2 -> HomeMainContent()
                 3 -> AlarmScreen()
+                4 -> EatTimeInputScreen()
+                5 -> SettingsScreen {}
                 else -> Text("準備中...")
             }
         }
