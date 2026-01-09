@@ -2,6 +2,7 @@ package com.example.team1application
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+
+var SnoozeIntervalData = 0
+var SnoozeCountData = 0
 class AlarmActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +46,9 @@ class AlarmActivity : ComponentActivity() {
         // 文字列から"分"を除去して数値に変換する処理をここで行います
         val snoozeIntervalStr = currentSetting?.snoozeInterval?.replace("分", "") ?: "5"
         val snoozeInterval = snoozeIntervalStr.toIntOrNull() ?: 5
-
+        //履歴に受け渡すようにglobalに
+        SnoozeIntervalData = snoozeInterval
+        Log.d("intarval", "スヌーズ間隔: ${SnoozeIntervalData}分")
         // 4. 現在の回数を Intent から取得
         val currentSnoozeCount = intent.getIntExtra("CURRENT_SNOOZE_COUNT", 0)
 
@@ -55,6 +64,8 @@ class AlarmActivity : ComponentActivity() {
                     if (isUnlimited || currentSnoozeCount < maxSnoozeCount) {
                         snoozeAndFinish(alarmId, currentSnoozeCount + 1, snoozeInterval)
                     }
+                    Log.d("snoozecount", "スヌーズ回数: ${SnoozeCountData}回")
+
                 }
             )
         }
@@ -64,12 +75,56 @@ class AlarmActivity : ComponentActivity() {
         stopService(Intent(this, AlarmService::class.java))
         //ここで履歴用のスヌーズ回数と間隔を受け渡す処理を記述する。
 
+        saveSleepRecord()
+
+
+
         finish()
+    }
+    private fun saveSleepRecord() {
+        val dataManager = SleepDataManager(this)
+        val records = dataManager.loadRecords().toMutableList()
+
+        // 現在の時刻を取得 (起床時刻)
+        val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdfDate = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+        val now = Date()
+
+        val wakeUpTimeStr = sdfTime.format(now)
+        val dateStr = sdfDate.format(now)
+
+        // 設定から就寝時刻（あるいは設定時刻）を取得
+        // ※本来はAlarmSettingから取得すべきですが、簡易的に現在の時刻から計算、
+        // もしくはIntentで渡された設定時刻を使用します。
+        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+        val allAlarms = AlarmDataStore.loadAlarms(this)
+        val currentSetting = allAlarms.find { it.id == alarmId }
+        val scheduledTime = currentSetting?.time ?: "00:00"
+
+        // 睡眠時間の計算 (calculateDuration関数を利用)
+        // 就寝用(BEDTIME)アラームの場合は「就寝時刻」として記録を分ける工夫が必要ですが、
+        // ここでは「起床(WAKE_UP)」時に1つのレコードとして完結させる例です。
+        val duration = calculateDuration(scheduledTime, wakeUpTimeStr, SnoozeCountData)
+
+        val newRecord = SleepRecord(
+            date = dateStr,
+            sleepTime = duration,           // 計算された睡眠時間
+            wakeUpTime = scheduledTime,     // 実際に止めた時刻
+            bedtime = wakeUpTimeStr,        // 本来鳴るはずだった時刻（または設定された就寝時刻）
+            snoozeCount = SnoozeCountData,  // グローバル変数から取得
+            snoozeDuration = "${SnoozeIntervalData}分" // グローバル変数から取得
+        )
+
+        // 同じ日付のデータがあれば上書き、なければ追加（ロジックは用途に合わせて調整）
+        records.add(newRecord)
+        dataManager.saveRecords(records)
+
+        Log.d("AlarmActivity", "履歴を保存しました: $newRecord")
     }
 
     private fun snoozeAndFinish(alarmId: Int, nextCount: Int, interval: Int) {
         val snoozeScheduler = SnoozeScheduler(this)
-
+        SnoozeCountData = nextCount
         // 次回のインテントに「次の回数」を渡す必要があるため、
         // SnoozeSchedulerの引数にnextCountを渡せるよう修正が必要です
         snoozeScheduler.scheduleSnooze(alarmId, interval, nextCount)
@@ -77,6 +132,7 @@ class AlarmActivity : ComponentActivity() {
         stopService(Intent(this, AlarmService::class.java))
         finish()
     }
+
 }
 
 @Composable
@@ -144,4 +200,6 @@ fun AlarmScreen(
             }
         }
     }
+
+
 }
