@@ -54,7 +54,7 @@ object AlarmDataStore {
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
-        // 💡 既存データに type がなくてもデフォルト値を使うための設定
+        // 既存データに type がなくてもデフォルト値を使うための設定
         encodeDefaults = true
     }
 

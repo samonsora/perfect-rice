@@ -15,6 +15,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,6 +85,11 @@ fun AlarmSetUI(
     var showVolumeDialog by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
     var showRepeatDialog by remember { mutableStateOf(false) }
+    var showSoundDeleteDialog by remember { mutableStateOf(false) }
+
+    val customSoundList = soundOptions.filter {
+        it != "alarmsound1" && it != "+アラーム音を追加" && it != "-アラーム音を削除"
+    }
 
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -183,7 +189,9 @@ fun AlarmSetUI(
             onSoundChange = { selected ->
                 when (selected) {
                     "+アラーム音を追加" -> launcher.launch("audio/mpeg")
-                    "-アラーム音を削除" -> { /* 必要に応じて実装 */ }
+                    "-アラーム音を削除" -> {
+                        showSoundDeleteDialog = true // 削除ダイアログを表示
+                    }
                     else -> alarmSound = selected
                 }
             },
@@ -217,6 +225,30 @@ fun AlarmSetUI(
             soundName = alarmSound,
             onDismiss = { showVolumeDialog = false },
             onSave = { alarmVolume = it; showVolumeDialog = false }
+        )
+    }
+    // --- サウンド削除ダイアログを表示するロジック ---
+    if (showSoundDeleteDialog) {
+        SoundDeleteDialog(
+            customSounds = customSoundList,
+            onDismiss = { showSoundDeleteDialog = false },
+            onDelete = { soundToDelete ->
+                // 1. 内部ストレージからファイルを物理削除
+                val file = File(context.filesDir, "$soundToDelete.mp3")
+                if (file.exists()) {
+                    file.delete()
+                }
+                // 2. 表示用リスト(soundOptions)から削除
+                soundOptions.remove(soundToDelete)
+                // 3. 現在選択中の音が削除された場合、デフォルト音に戻す
+                if (alarmSound == soundToDelete) {
+                    alarmSound = "alarmsound1"
+                }
+                // すべて削除した場合はダイアログを閉じる
+                if (soundOptions.none { it != "alarmsound1" && !it.startsWith("+") && !it.startsWith("-") }) {
+                    showSoundDeleteDialog = false
+                }
+            }
         )
     }
 }
@@ -535,5 +567,55 @@ private fun saveFileToInternalStorage(context: Context, uri: Uri, fileName: Stri
     } catch (e: Exception) {
         e.printStackTrace()
         false
+    }
+}
+
+/**
+ * アラーム音削除選択ダイアログ
+ */
+@Composable
+fun SoundDeleteDialog(
+    customSounds: List<String>,
+    onDismiss: () -> Unit,
+    onDelete: (String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text("削除する音を選択", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(16.dp))
+
+                if (customSounds.isEmpty()) {
+                    Text("追加されたアラーム音はありません。", modifier = Modifier.padding(vertical = 16.dp))
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                        items(customSounds.size) { index ->
+                            val sound = customSounds[index]
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onDelete(sound) }
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = sound, style = MaterialTheme.typography.bodyLarge)
+                                Icon(
+                                    imageVector = Icons.Default.Delete, // ※Icons.Default.Deleteを要インポート
+                                    contentDescription = "削除",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            HorizontalDivider(thickness = 0.5.dp)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("閉じる") }
+                }
+            }
+        }
     }
 }
