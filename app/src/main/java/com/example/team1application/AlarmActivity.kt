@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 class AlarmActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +62,8 @@ class AlarmActivity : ComponentActivity() {
 
     private fun stopAlarmAndFinish() {
         stopService(Intent(this, AlarmService::class.java))
+        //ここで履歴用のスヌーズ回数と間隔を受け渡す処理を記述する。
+
         finish()
     }
 
@@ -99,7 +103,11 @@ fun AlarmScreen(
         if (mainMessage.isNotEmpty()) {
             Text(
                 text = mainMessage,
-                style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified)
+                // fontSizeを大きく設定（例: 32sp）
+                fontSize = 32.sp,
+                // 太字にするとより見やすくなります
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
         }
 
@@ -110,13 +118,15 @@ fun AlarmScreen(
             } else {
                 "スヌーズ回数: $currentCount / $maxCount 回"
             }
-            Text(text = countText)
+            Text(text = countText,
+                fontSize = 18.sp)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // 3. 停止ボタン（これは共通）
-        Button(onClick = onStopClick) {
+        Button(onClick = onStopClick,
+            modifier = Modifier.size(width = 200.dp, height = 60.dp)) {
             Text(if (alarmType == "BEDTIME") "了解" else "止める")
         }
 
@@ -127,6 +137,7 @@ fun AlarmScreen(
             val canSnooze = isUnlimited || currentCount < maxCount
             Button(
                 onClick = onSnoozeClick,
+                modifier = Modifier.size(width = 200.dp, height = 60.dp),
                 enabled = canSnooze
             ) {
                 Text(if (canSnooze) "スヌーズ" else "スヌーズ上限です")
