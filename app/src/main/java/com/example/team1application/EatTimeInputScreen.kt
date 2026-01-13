@@ -203,8 +203,8 @@ class GeminiManager(apiKey: String) {
     {
       "menu": "料理名",
       "calories": 500,
-      "score": 80,
-      "advice": "アドバイス"
+      "score": 100点満点で,
+      "advice": "一言アドバイス"
     }
     出力はJSONフォーマットのみにしてください。
 """.trimIndent()
