@@ -2,6 +2,7 @@ package com.example.team1application
 
 import android.content.Context
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.core.content.edit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -118,5 +119,22 @@ fun deleteAlarmAndSave(context: Context, allAlarms: SnapshotStateList<AlarmSetti
     if (allAlarms.size < initialSize) {
         AlarmDataStore.saveAlarms(context, allAlarms)
         AlarmScheduler(context).syncWithStorage()
+    }
+}
+
+object UserPreferencesStore {
+    private const val PREF_NAME = "user_prefs"
+    private const val KEY_CHECK_MINUTES = "check_before_minutes"
+
+    // 設定を保存（デフォルトは60分）
+    fun saveCheckMinutes(context: Context, minutes: Int) {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        prefs.edit { putInt(KEY_CHECK_MINUTES, minutes) }
+    }
+
+    // 設定を読み込み
+    fun loadCheckMinutes(context: Context): Int {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        return prefs.getInt(KEY_CHECK_MINUTES, 60) // デフォルト60
     }
 }

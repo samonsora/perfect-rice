@@ -12,6 +12,10 @@ class AlarmScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
+    private val logDateFormat = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss", java.util.Locale.JAPAN).apply {
+        timeZone = java.util.TimeZone.getTimeZone("Asia/Tokyo")
+    }
+
     fun syncWithStorage() {
         val allSettings = AlarmDataStore.loadAlarms(context)
         Log.d("AlarmScheduler", "🔄 同期開始: ストレージ内の全件数 = ${allSettings.size}")
@@ -57,10 +61,11 @@ class AlarmScheduler(private val context: Context) {
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
-            }
-            // すでに過ぎている時刻なら明日にする
-            if (calendar.timeInMillis <= System.currentTimeMillis()) {
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
+
+                // すでに過ぎている時刻なら明日にする
+                if (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
             }
 
             // 曜日指定なし用の RequestCode（例えば 0 を使う）
@@ -72,7 +77,7 @@ class AlarmScheduler(private val context: Context) {
                 calendar.timeInMillis,
                 pendingIntent
             )
-            Log.i("AlarmScheduler", "✅ 予約完了(曜日指定なし): ID:${setting.id}, 次回発火:${calendar.time}")
+            Log.i("AlarmScheduler", "✅ 予約完了(曜日指定なし): ID:${setting.id}, 次回発火:${logDateFormat.format(calendar.time)}")
 
         } else {
             // 曜日指定がある場合は従来通りループで登録
