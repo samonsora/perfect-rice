@@ -30,20 +30,26 @@ import java.util.Locale
 import kotlin.collections.plus
 import kotlin.collections.sortedByDescending
 import kotlin.text.replace
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodInputScreen(
-    // 保存ボタンが押された時に、すべての情報を渡せるように引数を増やします
-    onSave: (MealRecord) -> Unit = {}
+    onSaveSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope() // AIを動かすための魔法の杖
+    val scope = rememberCoroutineScope()
+    val dataManager = remember { MealDataManager(context) }
 
     // --- 入力状態の管理 ---
     var mealType by remember { mutableStateOf("朝ごはん") }
-    val mealTypes = listOf("朝ごはん", "昼ごはん", "晩ごはん")
+    // 食事区分を増やしました
+    val mealTypes = listOf("朝ごはん", "昼ごはん", "晩ごはん", "間食", "夜食", "その他")
+
     var mealName by remember { mutableStateOf("") }
     var photoBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var hour by remember { mutableStateOf(12) }
@@ -55,7 +61,6 @@ fun FoodInputScreen(
     var aiScore by remember { mutableStateOf(0) }
     var aiAdvice by remember { mutableStateOf("") }
 
-    // AIの準備 (モデル名は1.5-flashに修正)
     val geminiManager = remember {
         val apiKey = BuildConfig.GEMINI_API_KEY
         GeminiManager(apiKey)
@@ -75,82 +80,90 @@ fun FoodInputScreen(
         }
     }
 
-    // --- 画面レイアウト ---
     Column(
         modifier = Modifier.fillMaxSize().background(Color.White).verticalScroll(scrollState).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("食事の記録", style = MaterialTheme.typography.headlineSmall)
 
-        // 食事区分（朝・昼・晩）
         Text("食事区分", style = MaterialTheme.typography.titleMedium)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            mealTypes.forEach { type ->
-                Button(
-                    onClick = { mealType = type },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (mealType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) { Text(type, maxLines = 1) }
+
+        // 食事区分ボタン（数が多いので3列ずつの2行で表示）
+        mealTypes.chunked(3).forEach { rowTypes ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowTypes.forEach { type ->
+                    Button(
+                        onClick = { mealType = type },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (mealType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) { Text(type, fontSize = 12.sp, maxLines = 1) }
+                }
             }
         }
 
-        // 写真表示
-        photoBitmap?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth().height(200.dp)
-            )
+        // --- 写真表示エリア（取り消しボタン付き） ---
+        photoBitmap?.let { bitmap ->
+            Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // ❌ 画像取り消しボタン
+                IconButton(
+                    onClick = { photoBitmap = null },
+                    modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "削除", tint = Color.White)
+                }
+            }
         }
-
         if (photoBitmap != null) {
             Button(
                 onClick = {
-                    /* 一時的にコメントアウトして何もしないようにします
-                    isAnalyzing = true
-                    scope.launch {
-                        val result = geminiManager.analyzeMealImage(photoBitmap!!)
-                        if (result != null) {
-                            mealName = result.menu
-                            aiScore = result.score
-                            aiAdvice = result.advice
-                        }
-                        isAnalyzing = false
+                        isAnalyzing = true
+                        scope.launch {
+                            val result = geminiManager.analyzeMealImage(photoBitmap!!)
+                            if (result != null) {
+                                mealName = result.menu
+                                aiScore = result.score
+                                aiAdvice = result.advice
+                            }
+                            isAnalyzing = false
                     }
-                    */
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = true, // ボタンは押せる状態にしておきます
+                enabled = !isAnalyzing,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
             ) {
-                // ボタンの表示もシンプルにしておきます
-                Text("AIに料理を判定してもらう（停止中） ✨")
+                if (isAnalyzing) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    Text(" 解析中...")
+                } else {
+                    Text("AIに料理を判定してもらう ✨")
+                }
             }
         }
 
-        // AIの答えを表示するエリア
         if (aiScore > 0) {
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9))) {
                 Text("【AI評価】 $aiScore 点\nアドバイス: $aiAdvice", modifier = Modifier.padding(12.dp))
             }
         }
 
-        // 食事内容の入力欄
         OutlinedTextField(
             value = mealName,
             onValueChange = { mealName = it },
-            label = { Text("食事内容（AIが入力します）") },
+            label = { Text("食事内容") },
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 時刻設定ボタン
         OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
             Text("時刻：%02d:%02d".format(hour, minute))
         }
 
-        // 写真準備ボタン
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }, modifier = Modifier.weight(1f)) {
                 Text("カメラ 📷")
@@ -160,29 +173,30 @@ fun FoodInputScreen(
             }
         }
 
-        // 保存ボタン
+        // 保存ボタン（実際に保存処理を走らせます）
         Button(
             onClick = {
-                val record = MealRecord(
+                val newRecord = MealRecord(
                     date = SimpleDateFormat("yyyy/MM/dd").format(Date()),
                     type = mealType,
                     menu = mealName,
-                    calories = 0, // 必要ならAI結果から取得
+                    calories = 0,
                     score = aiScore,
                     advice = aiAdvice
                 )
-                onSave(record)
+                val currentRecords = dataManager.loadRecords()
+                dataManager.saveRecords((currentRecords + newRecord).sortedByDescending { it.date })
+                onSaveSuccess()
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
         ) {
             Text("この内容で保存する")
         }
-
         Spacer(modifier = Modifier.height(80.dp))
     }
 
-    // (時刻選択ダイアログはそのまま)
+    // 時刻選択ダイアログ
     if (showPicker) {
         val timePickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
         AlertDialog(
@@ -192,21 +206,24 @@ fun FoodInputScreen(
         )
     }
 }
+
+// --- GeminiManager (2.5-flash) ---
 class GeminiManager(apiKey: String) {
+    // ユーザー指定により 2.5-flash を維持
     private val generativeModel = GenerativeModel(modelName ="gemini-2.5-flash", apiKey = apiKey)
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun analyzeMealImage(bitmap: Bitmap): MealRecord? {
         val promptText = """
-    この食事画像を分析して、以下の情報を日本語のJSON形式で返してください。
-    {
-      "menu": "料理名",
-      "calories": 500,
-      "score": 80,
-      "advice": "一言アドバイス"
-    }
-    出力はJSONフォーマットのみにしてください。
-""".trimIndent()
+            この食事画像を分析して、以下の情報を日本語のJSON形式で返してください。
+            {
+              "menu": "料理名",
+              "calories": 500,
+              "score": 80,
+              "advice": "アドバイス"
+            }
+            出力はJSONフォーマットのみにしてください。
+        """.trimIndent()
 
         val prompt = content {
             text(promptText)
