@@ -190,7 +190,7 @@ fun AlarmScreen(
                 "スヌーズ回数: $currentCount / $maxCount 回"
             }
             Text(text = countText,
-                fontSize = 18.sp)
+                fontSize = 25.sp)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
