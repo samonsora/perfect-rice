@@ -4,7 +4,6 @@ import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.provider.MediaStore
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -203,7 +202,7 @@ class GeminiManager(apiKey: String) {
     {
       "menu": "料理名",
       "calories": 500,
-      "score": 100点満点で,
+      "score": 80,
       "advice": "一言アドバイス"
     }
     出力はJSONフォーマットのみにしてください。
