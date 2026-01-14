@@ -311,7 +311,13 @@ fun RecordCard(record: SleepRecord, onDelete: () -> Unit) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(record.date, style = MaterialTheme.typography.titleMedium)
-                Text("睡眠時間: ${record.sleepTime} (${record.bedtime} 〜 ${record.wakeUpTime})", style = MaterialTheme.typography.bodySmall)
+                if(record.bedtime == record.wakeUpTime){
+                    Text("アラーム設定から就寝時間を設定してください",style = MaterialTheme.typography.bodySmall)
+                }
+                else{
+                    Text("睡眠時間: ${record.sleepTime} (${record.bedtime} 〜 ${record.wakeUpTime})", style = MaterialTheme.typography.bodySmall)
+                }
+
                 Text("スヌーズ: ${record.snoozeCount}回", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
             }
             IconButton(onClick = onDelete) {
