@@ -244,7 +244,7 @@ fun FoodInputScreen(
 
 // --- GeminiManager ---
 class GeminiManager(apiKey: String) {
-    private val generativeModel = GenerativeModel(modelName = "gemini-1.5-flash", apiKey = apiKey)
+    private val generativeModel = GenerativeModel(modelName = "gemini-2.5-flash", apiKey = apiKey)
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun analyzeMealImage(bitmap: Bitmap): MealRecord? {
