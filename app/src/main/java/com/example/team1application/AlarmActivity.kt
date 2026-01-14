@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -74,11 +75,15 @@ class AlarmActivity : ComponentActivity() {
     private fun stopAlarmAndFinish() {
         stopService(Intent(this, AlarmService::class.java))
         //ここで履歴用のスヌーズ回数と間隔を受け渡す処理を記述する。
-
-        saveSleepRecord()
-
-
-
+        val alarmType = intent.getStringExtra("ALARM_TYPE") ?: ""
+        if (alarmType == "BEDTIME") {
+            //就寝アラーム起動時にリセ
+            val bedtimeStore = BedtimeStore(this)
+            bedtimeStore.clear()
+            saveBedtimeFromSetting()
+        } else if(alarmType == "WAKE_UP"){
+            saveSleepRecord()
+        }
         finish()
     }
     private fun saveSleepRecord() {
@@ -90,7 +95,7 @@ class AlarmActivity : ComponentActivity() {
         val sdfDate = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
         val now = Date()
 
-        val wakeUpTimeStr = sdfTime.format(now)
+
         val dateStr = sdfDate.format(now)
 
         // 設定から就寝時刻（あるいは設定時刻）を取得
@@ -99,43 +104,57 @@ class AlarmActivity : ComponentActivity() {
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
         val allAlarms = AlarmDataStore.loadAlarms(this)
         val currentSetting = allAlarms.find { it.id == alarmId }
-        val scheduledTime = currentSetting?.time ?: "00:00"
 
+        val bedtimeStore = BedtimeStore(this)
+        val storedBedtime = bedtimeStore.getLastBedtime()
+
+        val bedtime = storedBedtime ?: currentSetting?.time ?: "00:00"
+
+
+        //Log.d("WAKEUP", "就寝時刻として使用: $scheduledTime")
         // scheduledTime（HH:mm）をDateに変換
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val baseTime = timeFormat.parse(scheduledTime)
+        val baseTime = timeFormat.parse(bedtime)
 
-        // スヌーズでずらす分数（回数 × 間隔）
-        val snoozeOffsetMinutes = SnoozeCountData * SnoozeIntervalData
+        // 実際に止めた「現在時刻」を起床時刻にする
+        val actualWakeUpTimeStr = sdfTime.format(Date())
 
-        // Calendarで分を加算
-        val calendar = java.util.Calendar.getInstance()
-        calendar.time = baseTime!!
-        calendar.add(java.util.Calendar.MINUTE, snoozeOffsetMinutes)
-
-        // 実際の起床時間（スヌーズ反映後）
-        val actualWakeUpTimeStr = timeFormat.format(calendar.time)
 
         // 睡眠時間の計算 (calculateDuration関数を利用)
         // 就寝用(BEDTIME)アラームの場合は「就寝時刻」として記録を分ける工夫が必要ですが、
         // ここでは「起床(WAKE_UP)」時に1つのレコードとして完結させる例です。
-        val duration = calculateDuration(scheduledTime, actualWakeUpTimeStr, SnoozeCountData)
+        val duration = calculateDuration(bedtime, actualWakeUpTimeStr, SnoozeCountData)
 
         val newRecord = SleepRecord(
             date = dateStr,
             sleepTime = duration,           // 計算された睡眠時間
             wakeUpTime = actualWakeUpTimeStr ,     // 実際に止めた時刻
-            bedtime = scheduledTime,        // 本来鳴るはずだった時刻（または設定された就寝時刻）
+            bedtime = bedtime,        // 本来鳴るはずだった時刻（または設定された就寝時刻）
             snoozeCount = SnoozeCountData,  // グローバル変数から取得
             snoozeDuration = "${SnoozeIntervalData}分" // グローバル変数から取得
         )
 
-        // 同じ日付のデータがあれば上書き、なければ追加（ロジックは用途に合わせて調整）
+        records.removeAll { it.date == newRecord.date }
         records.add(newRecord)
         dataManager.saveRecords(records)
 
         Log.d("AlarmActivity", "履歴を保存しました: $newRecord")
+
+
     }
+
+    private fun saveBedtimeFromSetting() {
+        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+        val allAlarms = AlarmDataStore.loadAlarms(this)
+        val currentSetting = allAlarms.find { it.id == alarmId }
+
+        val bedtime = currentSetting?.time ?: return
+
+        BedtimeStore(this).saveBedtime(bedtime)
+
+        Log.d("AlarmActivity", "就寝時刻を保存しました: $bedtime")
+    }
+
 
     private fun snoozeAndFinish(alarmId: Int, nextCount: Int, interval: Int) {
         val snoozeScheduler = SnoozeScheduler(this)
