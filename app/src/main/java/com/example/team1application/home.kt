@@ -77,7 +77,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     .padding(bottom = innerPadding.calculateBottomPadding())
             ) { page ->
                 when (page) {
-                    // 👇 【ここを変更！】左画面を MealScreen に変えたよ！
+                    // 👇 左画面を MealScreen
                     0 -> if (isSleepMode) {
                         RirekiScreen()
                     } else {
