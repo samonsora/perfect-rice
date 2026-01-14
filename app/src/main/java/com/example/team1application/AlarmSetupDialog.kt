@@ -24,7 +24,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
@@ -38,6 +37,7 @@ import java.util.TimeZone
  */
 @Composable
 fun AlarmSetupDialog(
+    initialTime: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
@@ -49,16 +49,9 @@ fun AlarmSetupDialog(
         }
     }
 
-    // デフォルトの時刻を現在のJST時刻で設定
-    val defaultTimeString = remember {
-        val calendar = Calendar.getInstance(jstTimeZone)
-        timeFormat.format(calendar.time)
-    }
-
     // UIステート
-    var timeInput by remember {
-        // 初期値を現在の時刻にし、カーソルを末尾に設定
-        mutableStateOf(TextFieldValue(defaultTimeString, selection = TextRange(defaultTimeString.length)))
+    var timeInput by remember(initialTime) {
+        mutableStateOf(TextFieldValue(initialTime, selection = TextRange(initialTime.length)))
     }
     var timeError by remember { mutableStateOf<String?>(null) }
     var previousTimeInput by remember { mutableStateOf(timeInput) }

@@ -92,6 +92,13 @@ fun AlarmSetUI(
     var snoozeCount by remember { mutableStateOf(existingAlarm?.snoozeCount ?: snoozeCountOptions[0]) }
 
     var showTimeDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (isNewAlarm) {
+            showTimeDialog = true
+        }
+    }
+
     var showVolumeDialog by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
     var showRepeatDialog by remember { mutableStateOf(false) }
@@ -211,6 +218,7 @@ fun AlarmSetUI(
     // --- 各種ダイアログ ---
     if (showTimeDialog) {
         AlarmSetupDialog(
+            initialTime = alarmTime,
             onDismiss = { showTimeDialog = false },
             onSave = { alarmTime = it; showTimeDialog = false }
         )

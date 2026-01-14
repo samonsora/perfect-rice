@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +63,6 @@ import androidx.core.graphics.drawable.toBitmap
 @Composable
 fun AlarmScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-
     // アラームデータのロード
     val allAlarms = remember {
         AlarmDataStore.loadAlarms(context).toMutableStateList()
@@ -78,6 +78,12 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
     var timeForNewAlarm by remember { mutableStateOf<String?>(null) }
     var editingAlarmId by remember { mutableStateOf<Int?>(null) }
 
+    val currentTimeStr = remember {
+        val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.JAPAN)
+        sdf.timeZone = java.util.TimeZone.getTimeZone("Asia/Tokyo")
+        sdf.format(java.util.Calendar.getInstance().time)
+    }
+
     // 歯車ボタンの状態
     var showExtraSettings by remember { mutableStateOf(false) }
 
@@ -91,7 +97,7 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
     // --- A. 詳細設定画面への遷移 ---
     if (timeForNewAlarm != null || editingAlarm != null) {
         val isNew = editingAlarm == null
-        val initialTime = timeForNewAlarm ?: editingAlarm?.time ?: "07:00"
+        val initialTime = timeForNewAlarm ?: editingAlarm?.time ?: currentTimeStr
 
         AlarmSetUI(
             initialTime = initialTime,
@@ -111,13 +117,16 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
                 editingAlarmId = null
             }
         )
-        return
     }
 
     // --- B. 時刻選択ダイアログ ---
     if (showSetupDialog) {
+        val baseTime = editingAlarm?.time ?: currentTimeStr
         AlarmSetupDialog(
-            onDismiss = { showSetupDialog = false },
+            initialTime = baseTime,
+            onDismiss = {
+                showSetupDialog = false
+            },
             onSave = { selectedTime ->
                 showSetupDialog = false
                 timeForNewAlarm = selectedTime
@@ -245,7 +254,20 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = { showSetupDialog = true },
+                        onClick = {
+                            // 現在時刻を "HH:mm" 形式で取得
+                            val now = java.util.Calendar.getInstance().apply {
+                                timeZone = java.util.TimeZone.getTimeZone("Asia/Tokyo")
+                            }
+                            val currentFormattedTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.JAPAN)
+                                .apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Tokyo") }
+                                .format(now.time)
+
+                            // editingAlarmId を null にすることで「新規作成」と判定させ、
+                            // timeForNewAlarm に現在時刻を入れることで AlarmSetUI を起動させる
+                            editingAlarmId = null
+                            timeForNewAlarm = currentFormattedTime
+                        },
                         modifier = Modifier.weight(1f).height(56.dp)
                     ) {
                         Text("➕ 新しいアラームを設定")
@@ -465,7 +487,7 @@ fun NotificationTimeSelectorDialog(onDismiss: () -> Unit, onSave: (Int) -> Unit)
     val context = LocalContext.current
     val options = listOf(5, 10, 15, 20, 30, 60)
     val currentSelection = remember { UserPreferencesStore.loadCheckMinutes(context) }
-    var selectedValue by remember { mutableStateOf(currentSelection) }
+    var selectedValue by remember { mutableIntStateOf(currentSelection) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

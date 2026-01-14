@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.util.Calendar
+import java.util.TimeZone
 
 class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -18,6 +19,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
 
     override suspend fun doWork(): Result {
         val context = applicationContext
+        val tz = TimeZone.getTimeZone("Asia/Tokyo")
 
         // 1. 監視対象アプリのロード
         val targetPackages = TargetAppDataStore.loadTargetApps(context)
@@ -40,8 +42,8 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val hour = timeParts[0].toInt()
         val minute = timeParts[1].toInt()
 
-        val now = Calendar.getInstance()
-        val bedtime = Calendar.getInstance().apply {
+        val now: Calendar = Calendar.getInstance(tz)
+        val bedtime: Calendar = Calendar.getInstance(tz).apply {
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
@@ -81,7 +83,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             val appLabel = try {
                 val appInfo = pm.getApplicationInfo(currentForegroundPackage, 0)
                 pm.getApplicationLabel(appInfo).toString()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 "アプリ"
             }
 

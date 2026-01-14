@@ -253,7 +253,7 @@ fun DailyMealCard(date: String, meals: List<MealRecord>, onDeleteMeal: (String) 
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = displayDate, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(text = "合計: ${totalCal} kcal", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(text = "合計: $totalCal kcal", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             meals.forEach { meal ->

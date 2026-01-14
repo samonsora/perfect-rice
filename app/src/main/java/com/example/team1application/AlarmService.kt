@@ -60,6 +60,17 @@ class AlarmService : Service() {
      * 選択された曲の設定に従って再生する
      */
     private fun startAlarmSound(setting: AlarmSetting?) {
+        // 新しい音を鳴らす前に、古いプレイヤーがあれば確実に解放する
+        try {
+            mediaPlayer?.let {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+        } catch (_: Exception) {
+            // 無視
+        }
+        mediaPlayer = null
+
         val soundName = setting?.soundName ?: "alarmsound1"
 
         val audioAttributes = AudioAttributes.Builder()

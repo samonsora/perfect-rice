@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Team1 Application</string>
+    <string name="app_name">生活習慣リペアキット</string>
     <string name="title_activity_settings">SettingsActivity</string>
 
     <!-- Preference Titles -->
