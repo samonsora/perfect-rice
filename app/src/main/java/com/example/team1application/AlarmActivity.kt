@@ -86,16 +86,6 @@ class AlarmActivity : ComponentActivity() {
             saveSleepRecord()
         }
 
-        // 2. Serviceの終了を待たず、ここで即座にメモ（フラグ）を書き換える
-        // commit() を使うことで、次の行に行く前に書き込みを完了させます
-        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit()
-            .putBoolean("is_ringing", false)
-            .putInt("ringing_alarm_id", -1)
-            .commit() // apply() ではなく commit() にするとより確実です
-
-        // 3. 履歴保存
-        saveSleepRecord()
-
         // 4. 最後に画面を閉じる
         finish()
     }
@@ -127,7 +117,7 @@ class AlarmActivity : ComponentActivity() {
         //Log.d("WAKEUP", "就寝時刻として使用: $scheduledTime")
         // scheduledTime（HH:mm）をDateに変換
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val baseTime = timeFormat.parse(bedtime)
+
 
         // 実際に止めた「現在時刻」を起床時刻にする
         val actualWakeUpTimeStr = sdfTime.format(Date())
