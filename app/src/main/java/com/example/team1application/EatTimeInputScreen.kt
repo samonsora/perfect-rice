@@ -2,8 +2,8 @@ package com.example.team1application
 
 import android.Manifest
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.provider.MediaStore
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -11,13 +11,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.launch
@@ -27,13 +31,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.collections.plus
-import kotlin.collections.sortedByDescending
-import kotlin.text.replace
-import androidx.compose.ui.Alignment
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +44,6 @@ fun FoodInputScreen(
 
     // --- 入力状態の管理 ---
     var mealType by remember { mutableStateOf("朝ごはん") }
-    // 食事区分を増やしました
     val mealTypes = listOf("朝ごはん", "昼ごはん", "晩ごはん", "間食", "夜食", "その他")
 
     var mealName by remember { mutableStateOf("") }
@@ -60,6 +56,7 @@ fun FoodInputScreen(
     var isAnalyzing by remember { mutableStateOf(false) }
     var aiScore by remember { mutableStateOf(0) }
     var aiAdvice by remember { mutableStateOf("") }
+    var aiCalories by remember { mutableStateOf(0) } // 🌟 追加：カロリーを保持する変数
 
     val geminiManager = remember {
         val apiKey = BuildConfig.GEMINI_API_KEY
@@ -68,27 +65,31 @@ fun FoodInputScreen(
 
     // --- カメラ・ギャラリーの設定 ---
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
-        photoBitmap = it
+        if (it != null) photoBitmap = it
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         if (it) cameraLauncher.launch(null)
     }
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
+            @Suppress("DEPRECATION")
             val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
             photoBitmap = bitmap
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Color.White).verticalScroll(scrollState).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .verticalScroll(scrollState)
+            .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("食事の記録", style = MaterialTheme.typography.headlineSmall)
 
         Text("食事区分", style = MaterialTheme.typography.titleMedium)
 
-        // 食事区分ボタン（数が多いので3列ずつの2行で表示）
         mealTypes.chunked(3).forEach { rowTypes ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 rowTypes.forEach { type ->
@@ -103,7 +104,7 @@ fun FoodInputScreen(
             }
         }
 
-        // --- 写真表示エリア（取り消しボタン付き） ---
+        // --- 写真表示エリア ---
         photoBitmap?.let { bitmap ->
             Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                 Image(
@@ -111,27 +112,30 @@ fun FoodInputScreen(
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize()
                 )
-                // ❌ 画像取り消しボタン
                 IconButton(
                     onClick = { photoBitmap = null },
-                    modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.5f))
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(Color.Black.copy(alpha = 0.5f))
                 ) {
                     Icon(Icons.Default.Close, contentDescription = "削除", tint = Color.White)
                 }
             }
         }
+
         if (photoBitmap != null) {
             Button(
                 onClick = {
-                        isAnalyzing = true
-                        scope.launch {
-                            val result = geminiManager.analyzeMealImage(photoBitmap!!)
-                            if (result != null) {
-                                mealName = result.menu
-                                aiScore = result.score
-                                aiAdvice = result.advice
-                            }
-                            isAnalyzing = false
+                    isAnalyzing = true
+                    scope.launch {
+                        val result = geminiManager.analyzeMealImage(photoBitmap!!)
+                        if (result != null) {
+                            mealName = result.menu
+                            aiScore = result.score
+                            aiAdvice = result.advice
+                            aiCalories = result.calories // 🌟 解析結果を代入
+                        }
+                        isAnalyzing = false
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -147,9 +151,13 @@ fun FoodInputScreen(
             }
         }
 
+        // --- AI評価の表示 ---
         if (aiScore > 0) {
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9))) {
-                Text("【AI評価】 $aiScore 点\nアドバイス: $aiAdvice", modifier = Modifier.padding(12.dp))
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("【AI評価】 $aiScore 点 / 推定 $aiCalories kcal", style = MaterialTheme.typography.titleSmall)
+                    Text("アドバイス: $aiAdvice", style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
 
@@ -173,14 +181,14 @@ fun FoodInputScreen(
             }
         }
 
-        // 保存ボタン（実際に保存処理を走らせます）
+        // --- 保存ボタン ---
         Button(
             onClick = {
                 val newRecord = MealRecord(
-                    date = SimpleDateFormat("yyyy/MM/dd").format(Date()),
+                    date = SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN).format(Date()),
                     type = mealType,
                     menu = mealName,
-                    calories = 0,
+                    calories = aiCalories, // 🌟 0 ではなく AIが取得した値を入れる
                     score = aiScore,
                     advice = aiAdvice
                 )
@@ -196,7 +204,6 @@ fun FoodInputScreen(
         Spacer(modifier = Modifier.height(80.dp))
     }
 
-    // 時刻選択ダイアログ
     if (showPicker) {
         val timePickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
         AlertDialog(
@@ -207,22 +214,23 @@ fun FoodInputScreen(
     }
 }
 
-// --- GeminiManager (2.5-flash) ---
+// --- GeminiManager (安定版への修正) ---
 class GeminiManager(apiKey: String) {
-    // ユーザー指定により 2.5-flash を維持
-    private val generativeModel = GenerativeModel(modelName ="gemini-2.5-flash", apiKey = apiKey)
+    // 🌟 gemini-2.5-flashという名称が存在しない場合があるため、1.5-flashを推奨
+    private val generativeModel = GenerativeModel(modelName = "gemini-2.5-flash", apiKey = apiKey)
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun analyzeMealImage(bitmap: Bitmap): MealRecord? {
         val promptText = """
             この食事画像を分析して、以下の情報を日本語のJSON形式で返してください。
             {
-              "menu": "料理名",
-              "calories": 500,
-              "score": 80,
-              "advice": "アドバイス"
+             "menu": "料理名",
+             "calories": 500,
+             "score": 8,
+             "advice": "アドバイス"
             }
-            出力はJSONフォーマットのみにしてください。
+            注意：出力は必ず { で始まり } で終わる純粋なJSONのみにしてください。
+            caloriesとscoreは必ず「数値」のみにしてください。
         """.trimIndent()
 
         val prompt = content {
@@ -233,18 +241,26 @@ class GeminiManager(apiKey: String) {
         return try {
             val response = generativeModel.generateContent(prompt)
             val rawText = response.text ?: return null
-            val jsonText = rawText.replace("```json", "").replace("```", "").trim()
+
+            // 🌟 JSONの開始と終了を抽出（解析中ループ対策）
+            val start = rawText.indexOf("{")
+            val end = rawText.lastIndexOf("}")
+            if (start == -1 || end == -1) return null
+            val jsonText = rawText.substring(start, end + 1)
+
             val element = json.parseToJsonElement(jsonText).jsonObject
 
             MealRecord(
                 date = SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN).format(Date()),
                 type = "AI解析",
                 menu = element["menu"]?.jsonPrimitive?.content ?: "不明",
-                calories = element["calories"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-                score = element["score"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                // 🌟 数字以外の文字（kcalなど）を除去して数値化
+                calories = element["calories"]?.jsonPrimitive?.content?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: 0,
+                score = element["score"]?.jsonPrimitive?.content?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: 0,
                 advice = element["advice"]?.jsonPrimitive?.content ?: ""
             )
         } catch (e: Exception) {
+            Log.e("GeminiManager", "Analysis Error", e)
             null
         }
     }
