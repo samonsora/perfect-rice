@@ -312,7 +312,7 @@ fun AppSelectorDialog(onDismiss: () -> Unit, onSave: (Set<String>) -> Unit) {
             "com.android.contacts",    // 連絡先
             "com.android.deskclock",   // 時計
             "com.android.calculator",  // 電卓
-            context.packageName        // このアプリ自身
+            //context.packageName        // このアプリ自身
         )
 
         // ランチャーアイコンを持つアプリを取得し、除外リストにないものを抽出
