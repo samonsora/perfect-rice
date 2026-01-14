@@ -21,23 +21,26 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val context = applicationContext
         val tz = TimeZone.getTimeZone("Asia/Tokyo")
 
+        Log.d("USAGE_CHECK", "--- 監視タスク開始 ---")
+
         // 1. 監視対象アプリのロード
         val targetPackages = TargetAppDataStore.loadTargetApps(context)
         if (targetPackages.isEmpty()) {
-            Log.d("USAGE_CHECK", "監視対象アプリが設定されていないため終了します。")
+            Log.d("USAGE_CHECK", "⚠️ 監視対象アプリが設定されていません。")
             return Result.success()
         }
+        Log.d("USAGE_CHECK", "監視対象: $targetPackages")
 
         // 2. 就寝アラーム(BEDTIME)のデータを取得
         val allAlarms = AlarmDataStore.loadAlarms(context)
         val bedtimeAlarm = allAlarms.find { it.isActive && it.type == AlarmType.BEDTIME }
 
         if (bedtimeAlarm == null) {
-            Log.d("USAGE_CHECK", "有効な就寝アラームがないため終了します。")
+            Log.d("USAGE_CHECK", "ℹ️ 有効な就寝アラームがないためスキップします。")
             return Result.success()
         }
 
-        // 3. アラーム時刻をパースして Calendar に設定
+        // 3. アラーム時刻の設定
         val timeParts = bedtimeAlarm.time.split(":")
         val hour = timeParts[0].toInt()
         val minute = timeParts[1].toInt()
@@ -55,27 +58,33 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         checkTimeStart.add(Calendar.MINUTE, -checkingBeforeMinutes)
 
         // 4. 時刻判定ロジック
-        // ※ 深夜0時をまたぐ設定に対応するため now.after(checkTimeStart) も追加するとより正確です
         if (now.before(checkTimeStart) || now.after(bedtime)) {
-            Log.d("USAGE_CHECK", "監視時間外です（現在: ${now.time}, 範囲: ${checkTimeStart.time} ～ ${bedtime.time}）")
+            Log.d("USAGE_CHECK", "💤 監視時間外（範囲外）: 現在 ${now.time}, 判定範囲: ${checkTimeStart.time} ～ ${bedtime.time}")
             return Result.success()
         }
+        Log.d("USAGE_CHECK", "✅ 監視時間内（範囲内）です。アプリ使用状況をチェックします。")
 
-        // 5. アプリ使用状況の検出 (以下は以前のロジックと同じ)
+        // 5. アプリ使用状況の検出
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val endTime = System.currentTimeMillis()
-        val startTime = checkTimeStart.timeInMillis
+        val startTime = endTime - (1000 * 60 * 15) // 直近15分間の動きを確認
 
         val events = usageStatsManager.queryEvents(startTime, endTime)
         val event = UsageEvents.Event()
         var currentForegroundPackage: String? = null
 
+        // ログ用に全イベントをチェック（デバッグ用）
+        var eventCount = 0
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
+            eventCount++
+            // 最後に「フォアグラウンド（使用開始）」になったアプリを特定
             if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                 currentForegroundPackage = event.packageName
             }
         }
+
+        Log.d("USAGE_CHECK", "検出イベント数: $eventCount, 最新フォアグラウンド: $currentForegroundPackage")
 
         // 6. 判定と通知
         if (currentForegroundPackage != null && targetPackages.contains(currentForegroundPackage)) {
@@ -84,10 +93,13 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 val appInfo = pm.getApplicationInfo(currentForegroundPackage, 0)
                 pm.getApplicationLabel(appInfo).toString()
             } catch (_: Exception) {
-                "アプリ"
+                currentForegroundPackage // 名前が取れなければパッケージ名
             }
 
+            Log.d("USAGE_CHECK", "🔔 一致検出！通知を送ります: $appLabel")
             showNotification(context, "夜更かし注意！${appLabel} を終了して、そろそろ寝ませんか？")
+        } else {
+            Log.d("USAGE_CHECK", "対象アプリは現在使用されていません。")
         }
 
         return Result.success()
@@ -115,7 +127,7 @@ class UsageCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setVibrate(longArrayOf(0, 500, 200, 500)) // 振動パターンの追加
+            .setVibrate(longArrayOf(0, 500, 200, 500))
 
         notificationManager.notify(1001, builder.build())
     }

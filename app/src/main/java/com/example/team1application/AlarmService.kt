@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import java.io.File
@@ -61,15 +62,19 @@ class AlarmService : Service() {
      */
     private fun startAlarmSound(setting: AlarmSetting?) {
         // 新しい音を鳴らす前に、古いプレイヤーがあれば確実に解放する
-        try {
-            mediaPlayer?.let {
-                if (it.isPlaying) it.stop()
-                it.release()
+        mediaPlayer?.let {
+            try {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+            } catch (_: Exception) {
+                // 既に停止している場合などのエラーを無視
+            } finally {
+                it.release() // 確実に解放
+                mediaPlayer = null
+                Log.d("AlarmService", "Previous MediaPlayer released.")
             }
-        } catch (_: Exception) {
-            // 無視
         }
-        mediaPlayer = null
 
         val soundName = setting?.soundName ?: "alarmsound1"
 

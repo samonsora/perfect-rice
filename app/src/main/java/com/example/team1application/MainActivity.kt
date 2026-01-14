@@ -23,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.example.team1application.ui.theme.Team1ApplicationTheme
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private lateinit var alarmInitializer: AlarmInitializer
@@ -49,6 +51,9 @@ class MainActivity : ComponentActivity() {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+
+        // --- 就寝前アプリ使用チェックの予約 ---
+        setupUsageCheckWorker()
 
         // --- 4. メインUIの構築 ---
         setContent {
@@ -77,6 +82,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // --- Workerの定期実行を登録するメソッド ---
+    private fun setupUsageCheckWorker() {
+        val workRequest = PeriodicWorkRequestBuilder<UsageCheckWorker>(
+            15, TimeUnit.MINUTES // システム制限上の最小間隔
+        ).build()
+
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "UsageCheckWork",
+            ExistingPeriodicWorkPolicy.KEEP, // すでに予約済みなら何もしない（二重登録防止）
+            workRequest
+        )
+    }
+
     override fun onResume() {
         super.onResume()
         // アプリがバックグラウンドから戻った時にもチェック
@@ -85,7 +103,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 追加/修正：共有メモリから鳴動中の情報を取得して遷移
+     * 共有メモリから鳴動中の情報を取得して遷移
      */
     private fun checkRingingAndNavigate() {
         val prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
