@@ -3,6 +3,7 @@ package com.example.team1application
 import android.Manifest
 import android.graphics.Bitmap
 import android.provider.MediaStore
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -10,121 +11,156 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-
+import androidx.compose.ui.unit.sp
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodInputScreen(
-    // 保存ボタンが押された時の処理（今は空っぽでもOK）
-    onSave: (String, String, Int, Int) -> Unit = { _, _, _, _ -> }
+    onSaveSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
-
-    // スクロールできるようにしておく（画面が小さくても安心！）
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val dataManager = remember { MealDataManager(context) }
 
-    // 食事区分
+    // --- 入力状態の管理 ---
     var mealType by remember { mutableStateOf("朝ごはん") }
-    val mealTypes = listOf("朝ごはん", "昼ごはん", "晩ごはん")
+    val mealTypes = listOf("朝ごはん", "昼ごはん", "晩ごはん", "間食", "夜食", "その他")
 
     var mealName by remember { mutableStateOf("") }
     var photoBitmap by remember { mutableStateOf<Bitmap?>(null) }
-
     var hour by remember { mutableStateOf(12) }
     var minute by remember { mutableStateOf(0) }
     var showPicker by remember { mutableStateOf(false) }
 
-    // カメラ
-    val cameraLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.TakePicturePreview()
-        ) { bitmap ->
+    // --- AI解析用の状態 ---
+    var isAnalyzing by remember { mutableStateOf(false) }
+    var aiScore by remember { mutableStateOf(0) }
+    var aiAdvice by remember { mutableStateOf("") }
+    var aiCalories by remember { mutableStateOf(0) } // 🌟 追加：カロリーを保持する変数
+
+    val geminiManager = remember {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        GeminiManager(apiKey)
+    }
+
+    // --- カメラ・ギャラリーの設定 ---
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
+        if (it != null) photoBitmap = it
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        if (it) cameraLauncher.launch(null)
+    }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            @Suppress("DEPRECATION")
+            val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
             photoBitmap = bitmap
         }
-
-    val permissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { granted ->
-            if (granted) cameraLauncher.launch(null)
-        }
-
-    // ギャラリー
-    val galleryLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.GetContent()
-        ) { uri ->
-            uri?.let {
-                // ※ 古いAndroid手法だけど今はこれで動かすね！
-                @Suppress("DEPRECATION")
-                val bitmap = MediaStore.Images.Media.getBitmap(
-                    context.contentResolver,
-                    it
-                )
-                photoBitmap = bitmap
-            }
-        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White) // 背景を白にしておく
-            .verticalScroll(scrollState) // 縦スクロール有効化
+            .background(Color.White)
+            .verticalScroll(scrollState)
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
         Text("食事の記録", style = MaterialTheme.typography.headlineSmall)
 
-        // 食事区分（ボタン選択）
         Text("食事区分", style = MaterialTheme.typography.titleMedium)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            mealTypes.forEach { type ->
-                Button(
-                    onClick = { mealType = type },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor =
-                            if (mealType == type)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor =
-                            if (mealType == type)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    // 文字数が多いと溢れるから少し小さくするかも？
-                    Text(type, maxLines = 1)
+        mealTypes.chunked(3).forEach { rowTypes ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowTypes.forEach { type ->
+                    Button(
+                        onClick = { mealType = type },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (mealType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) { Text(type, fontSize = 12.sp, maxLines = 1) }
                 }
             }
         }
 
-        // 写真表示
-        photoBitmap?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = "食事の写真",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            )
+        // --- 写真表示エリア ---
+        photoBitmap?.let { bitmap ->
+            Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize()
+                )
+                IconButton(
+                    onClick = { photoBitmap = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "削除", tint = Color.White)
+                }
+            }
         }
 
-        // 食事内容
+        if (photoBitmap != null) {
+            Button(
+                onClick = {
+                    isAnalyzing = true
+                    scope.launch {
+                        val result = geminiManager.analyzeMealImage(photoBitmap!!)
+                        if (result != null) {
+                            mealName = result.menu
+                            aiScore = result.score
+                            aiAdvice = result.advice
+                            aiCalories = result.calories // 🌟 解析結果を代入
+                        }
+                        isAnalyzing = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isAnalyzing,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                if (isAnalyzing) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    Text(" 解析中...")
+                } else {
+                    Text("AIに料理を判定してもらう ✨")
+                }
+            }
+        }
+
+        // --- AI評価の表示 ---
+        if (aiScore > 0) {
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9))) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("【AI評価】 $aiScore 点 / 推定 $aiCalories kcal", style = MaterialTheme.typography.titleSmall)
+                    Text("アドバイス: $aiAdvice", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+
         OutlinedTextField(
             value = mealName,
             onValueChange = { mealName = it },
@@ -132,68 +168,100 @@ fun FoodInputScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 時刻
-        OutlinedButton(
-            onClick = { showPicker = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
             Text("時刻：%02d:%02d".format(hour, minute))
         }
 
-        // 写真撮影
-        Button(
-            onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("写真を撮る 📷")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }, modifier = Modifier.weight(1f)) {
+                Text("カメラ 📷")
+            }
+            Button(onClick = { galleryLauncher.launch("image/*") }, modifier = Modifier.weight(1f)) {
+                Text("ギャラリー 🖼️")
+            }
         }
 
-        // ギャラリー
-        Button(
-            onClick = { galleryLauncher.launch("image/*") },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("ギャラリーから選ぶ 🖼️")
-        }
-
-        // 保存
+        // --- 保存ボタン ---
         Button(
             onClick = {
-                onSave(mealType, mealName, hour, minute)
+                val newRecord = MealRecord(
+                    date = SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN).format(Date()),
+                    type = mealType,
+                    menu = mealName,
+                    calories = aiCalories, // 🌟 0 ではなく AIが取得した値を入れる
+                    score = aiScore,
+                    advice = aiAdvice
+                )
+                val currentRecords = dataManager.loadRecords()
+                dataManager.saveRecords((currentRecords + newRecord).sortedByDescending { it.date })
+                onSaveSuccess()
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
         ) {
-            Text("保存する")
+            Text("この内容で保存する")
         }
-
-        // ナビゲーションバーに隠れないように余白
         Spacer(modifier = Modifier.height(80.dp))
     }
 
-    // ===== 時刻選択ダイアログ =====
     if (showPicker) {
-        val timePickerState = rememberTimePickerState(
-            initialHour = hour,
-            initialMinute = minute,
-            is24Hour = true
-        )
-
+        val timePickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
         AlertDialog(
             onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    hour = timePickerState.hour
-                    minute = timePickerState.minute
-                    showPicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) { Text("キャンセル") }
-            },
-            text = {
-                TimePicker(state = timePickerState)
-            }
+            confirmButton = { TextButton(onClick = { hour = timePickerState.hour; minute = timePickerState.minute; showPicker = false }) { Text("OK") } },
+            text = { TimePicker(state = timePickerState) }
         )
+    }
+}
+
+// --- GeminiManager (安定版への修正) ---
+class GeminiManager(apiKey: String) {
+    // 🌟 gemini-2.5-flashという名称が存在しない場合があるため、1.5-flashを推奨
+    private val generativeModel = GenerativeModel(modelName = "gemini-2.5-flash", apiKey = apiKey)
+    private val json = Json { ignoreUnknownKeys = true }
+
+    suspend fun analyzeMealImage(bitmap: Bitmap): MealRecord? {
+        val promptText = """
+            この食事画像を分析して、以下の情報を日本語のJSON形式で返してください。
+            {
+             "menu": "料理名",
+             "calories": 500,
+             "score": 8,
+             "advice": "アドバイス"
+            }
+            注意：出力は必ず { で始まり } で終わる純粋なJSONのみにしてください。
+            caloriesとscoreは必ず「数値」のみにしてください。
+        """.trimIndent()
+
+        val prompt = content {
+            text(promptText)
+            image(bitmap)
+        }
+
+        return try {
+            val response = generativeModel.generateContent(prompt)
+            val rawText = response.text ?: return null
+
+            // 🌟 JSONの開始と終了を抽出（解析中ループ対策）
+            val start = rawText.indexOf("{")
+            val end = rawText.lastIndexOf("}")
+            if (start == -1 || end == -1) return null
+            val jsonText = rawText.substring(start, end + 1)
+
+            val element = json.parseToJsonElement(jsonText).jsonObject
+
+            MealRecord(
+                date = SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN).format(Date()),
+                type = "AI解析",
+                menu = element["menu"]?.jsonPrimitive?.content ?: "不明",
+                // 🌟 数字以外の文字（kcalなど）を除去して数値化
+                calories = element["calories"]?.jsonPrimitive?.content?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: 0,
+                score = element["score"]?.jsonPrimitive?.content?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: 0,
+                advice = element["advice"]?.jsonPrimitive?.content ?: ""
+            )
+        } catch (e: Exception) {
+            Log.e("GeminiManager", "Analysis Error", e)
+            null
+        }
     }
 }
