@@ -108,19 +108,16 @@ class MainActivity : ComponentActivity() {
     private fun checkRingingAndNavigate() {
         val prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
         val isRinging = prefs.getBoolean("is_ringing", false)
+        val alarmId = prefs.getInt("ringing_alarm_id", -1)
 
-        if (isRinging) {
-            // Serviceが保存した鳴動情報を取得
-            val alarmId = prefs.getInt("ringing_alarm_id", -1)
-            val alarmType = prefs.getString("ringing_alarm_type", "")
-            val currentCount = prefs.getInt("ringing_snooze_count", 0)
-
+        // isRinging が true かつ alarmId が有効な時だけ遷移
+        if (isRinging && alarmId != -1) {
             val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
+                // SINGLE_TOP を活用し、二重起動を防ぐ
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                // ここで情報を渡すことでAlarmActivityが正常に動作する
                 putExtra("ALARM_ID", alarmId)
-                putExtra("ALARM_TYPE", alarmType)
-                putExtra("CURRENT_SNOOZE_COUNT", currentCount)
+                putExtra("ALARM_TYPE", prefs.getString("ringing_alarm_type", ""))
+                putExtra("CURRENT_SNOOZE_COUNT", prefs.getInt("ringing_snooze_count", 0))
             }
             startActivity(alarmIntent)
         }
