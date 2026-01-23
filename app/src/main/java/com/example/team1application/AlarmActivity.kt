@@ -19,8 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -75,6 +75,9 @@ class AlarmActivity : ComponentActivity() {
     private fun stopAlarmAndFinish() {
         // 1. 音を止める命令を出す
         stopService(Intent(this, AlarmService::class.java))
+        getSharedPreferences("alarm_prefs", MODE_PRIVATE).edit {
+            putBoolean("is_ringing", false)
+        }
         //ここで履歴用のスヌーズ回数と間隔を受け渡す処理を記述する。
         val alarmType = intent.getStringExtra("ALARM_TYPE") ?: ""
         if (alarmType == "BEDTIME") {
