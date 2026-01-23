@@ -33,6 +33,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.Calendar
+import androidx.compose.foundation.isSystemInDarkTheme
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,10 +103,11 @@ fun FoodInputScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Color.White).verticalScroll(scrollState).padding(24.dp),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(scrollState).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("食事の記録", style = MaterialTheme.typography.headlineSmall)
+        Text("食事の記録", style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground)
 
         // 食事区分
         Text("食事区分", style = MaterialTheme.typography.titleMedium)
@@ -116,7 +119,14 @@ fun FoodInputScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !isSaved,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (mealType == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = if (mealType == type)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (mealType == type)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) { Text(type, fontSize = 12.sp, maxLines = 1) }
                 }
