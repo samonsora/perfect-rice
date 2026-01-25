@@ -122,9 +122,10 @@ fun HomeMainContent(
     onSettingsClick: () -> Unit
 ) {
     var timeString by remember { mutableStateOf("00:00") }
+    // 初期画像はとりあえずバナナにしておく
     var currentBgImage by remember { mutableStateOf(R.drawable.banana) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isSleepMode) { // 👈 モードが変わった時も再チェックするように修正
         while (isActive) {
             val calendar = Calendar.getInstance()
             calendar.timeZone = TimeZone.getTimeZone("Asia/Tokyo")
@@ -133,11 +134,27 @@ fun HomeMainContent(
             timeString = formatter.format(calendar.time)
 
             val hour = calendar.get(Calendar.HOUR_OF_DAY)
-            currentBgImage = when (hour) {
-                in 6..15 -> R.drawable.banana
-                in 16..18 -> R.drawable.tomato
-                else -> R.drawable.kabotyaneko
+
+            // ✨✨✨ ここで分岐させるよ！ ✨✨✨
+            if (isSleepMode) {
+                // 🌙 睡眠モードの時の画像ルール（今まで通り）
+                currentBgImage = when (hour) {
+                    in 6..15 -> R.drawable.banana       // 朝〜昼はバナナ
+                    in 16..18 -> R.drawable.tomato      // 夕方はトマト
+                    else -> R.drawable.kabotyaneko      // 夜はカボチャ猫
+                }
+            } else {
+                // 🍳 食事モードの時の画像ルール（ここを自由に設定！）
+                // ※ 例として、もっと細かく時間を分けてみるね
+                currentBgImage = when (hour) {
+                    in 6..10 -> R.drawable.tyousyoku2       // 朝ごはん（例：パンの画像とかに変えてもOK）
+                    in 11..13 -> R.drawable.hirumesi      // お昼ごはん
+                    in 14..16 -> R.drawable.oyatu      // おやつタイム
+                    in 17..20 -> R.drawable.tomato      // 晩ごはん
+                    else -> R.drawable.kabotyaneko      // 夜食？
+                }
             }
+
             delay(1000)
         }
     }
