@@ -3,6 +3,7 @@ package com.example.team1application
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -266,9 +267,12 @@ fun MealBarChart(dailyCalories: Map<String, Int>, modifier: Modifier) {
 @Composable
 fun DailyMealCard(date: String, meals: List<MealRecord>, onDeleteMeal: (String) -> Unit, onEditMeal: (MealRecord) -> Unit) {
     val totalCal = meals.sumOf { it.calories }
+    val isDark = isSystemInDarkTheme()
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = if (!isDark)Color.White
+            else MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

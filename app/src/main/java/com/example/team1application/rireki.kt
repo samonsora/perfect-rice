@@ -3,6 +3,7 @@ package com.example.team1application
 import android.content.Context
 import android.graphics.Color
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -294,10 +295,12 @@ fun CustomBarChart(barEntries: List<BarEntry>, xAxisLabels: List<String>, modifi
 // --- 6. 強化版カード ---
 @Composable
 fun EnhancedRecordCard(record: SleepRecord, onDelete: () -> Unit, onEdit: () -> Unit) {
+    val isDark = isSystemInDarkTheme()
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White),
-        shape = RoundedCornerShape(12.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (!isDark) androidx.compose.ui.graphics.Color.White
+            else MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
