@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,16 +15,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+
 
 
 var SnoozeIntervalData = 0
@@ -175,6 +182,11 @@ class AlarmActivity : ComponentActivity() {
 
 }
 
+// 起床用ボタンカラー（赤み強化）
+val WakeStopColor = androidx.compose.ui.graphics.Color(0xFFD62828)
+val WakeSnoozeColor = androidx.compose.ui.graphics.Color(0xFFE76F51)
+
+
 @Composable
 fun AlarmScreen(
     alarmType: String,
@@ -184,61 +196,125 @@ fun AlarmScreen(
     onStopClick: () -> Unit,
     onSnoozeClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // 1. メインメッセージの表示
-        val mainMessage = when (alarmType) {
-            "WAKE_UP" -> "おはようございます"
-            "BEDTIME" -> "おやすみなさい"
-            else -> ""
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
 
-        if (mainMessage.isNotEmpty()) {
-            Text(
-                text = mainMessage,
-                // fontSizeを大きく設定（例: 32sp）
-                fontSize = 32.sp,
-                // 太字にするとより見やすくなります
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+        // 1. 背景画像の配置
+        if(alarmType == "WAKE_UP"){
+            Image(
+                painter = painterResource(id = R.drawable.morning), // ここに画像ファイル名を指定
+                contentDescription = null, // 装飾的な画像なのでnullでOK
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop // 画面いっぱいにリサイズ（切り取り）して表示
+            )
+        }
+        else{
+            Image(
+                painter = painterResource(id = R.drawable.evening), // ここに画像ファイル名を指定
+                contentDescription = null, // 装飾的な画像なのでnullでOK
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop // 画面いっぱいにリサイズ（切り取り）して表示
             )
         }
 
-        //  2. 起床用（WAKE_UP）の場合のみスヌーズ回数を表示
-        if (alarmType == "WAKE_UP") {
-            val countText = if (isUnlimited) {
-                "スヌーズ回数: $currentCount / 無制限"
-            } else {
-                "スヌーズ回数: $currentCount / $maxCount 回"
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 1. メインメッセージの表示
+            val mainMessage = when (alarmType) {
+                "WAKE_UP" -> "おはようございます"
+                "BEDTIME" -> "おやすみなさい"
+                else -> ""
             }
-            Text(text = countText,
-                fontSize = 25.sp)
-        }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // 3. 停止ボタン（これは共通）
-        Button(onClick = onStopClick,
-            modifier = Modifier.size(width = 200.dp, height = 60.dp)) {
-            Text(if (alarmType == "BEDTIME") "了解" else "止める")
-        }
-
-        // 4. 起床用（WAKE_UP）の場合のみスヌーズボタンを表示
-        if (alarmType == "WAKE_UP") {
-            Spacer(modifier = Modifier.height(16.dp))
-            val canSnooze = isUnlimited || currentCount < maxCount
-            Button(
-                onClick = onSnoozeClick,
-                modifier = Modifier.size(width = 200.dp, height = 60.dp),
-                enabled = canSnooze
-            ) {
-                Text(if (canSnooze) "スヌーズ" else "スヌーズ上限です")
+            if (mainMessage.isNotEmpty()) {
+                if (alarmType == "BEDTIME") {
+                    Text(
+                        text = mainMessage,
+                        fontSize = 32.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = androidx.compose.ui.graphics.Color(0xFFD6E2FF),
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = androidx.compose.ui.graphics.Color(0xAA000000),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                                blurRadius = 8f
+                            )
+                        ),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                } else {
+                    // WAKE_UP 用（今まで通り）
+                    Text(
+                        text = mainMessage,
+                        fontSize = 32.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
             }
+
+            //  2. 起床用（WAKE_UP）の場合のみスヌーズ回数を表示
+            if (alarmType == "WAKE_UP") {
+                val countText = if (isUnlimited) {
+                    "スヌーズ回数: $currentCount / 無制限"
+                } else {
+                    "スヌーズ回数: $currentCount / $maxCount 回"
+                }
+                Text(
+                    text = countText,
+                    fontSize = 25.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+// スヌーズ（WAKE_UP のみ）
+            if (alarmType == "WAKE_UP") {
+                val canSnooze = isUnlimited || currentCount < maxCount
+                Button(
+                    onClick = onSnoozeClick,
+                    modifier = Modifier.size(width = 200.dp, height = 60.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WakeSnoozeColor,
+                        contentColor = androidx.compose.ui.graphics.Color.White
+                    ),
+                    enabled = canSnooze
+                ) {
+                    Text(if (canSnooze) "スヌーズ" else "スヌーズ上限です")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+// 止める（共通）
+            if(alarmType == "WAKE_UP") {
+                Button(
+                    onClick = onStopClick,
+                    modifier = Modifier.size(width = 200.dp, height = 60.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WakeStopColor,
+                        contentColor = androidx.compose.ui.graphics.Color.White
+                    )
+                ) {
+                    Text("止める")
+                }
+            }
+            else{
+                Button(
+                    onClick = onStopClick,
+                    modifier = Modifier.size(width = 200.dp, height = 60.dp),
+
+                ) {
+                    Text(
+                        text = "了解",
+                        fontSize = 20.sp)
+                }
+            }
+
+
         }
+
     }
-
-
 }
