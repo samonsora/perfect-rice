@@ -135,7 +135,7 @@ fun HomeMainContent(
 
             val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
-            // ✨✨✨ ここで分岐させるよ！ ✨✨✨
+            //  分岐
             if (isSleepMode) {
                 // 🌙 睡眠モードの時の画像ルール（今まで通り）
                 currentBgImage = when (hour) {
@@ -150,8 +150,8 @@ fun HomeMainContent(
                     in 6..10 -> R.drawable.tyousyoku2       // 朝ごはん（例：パンの画像とかに変えてもOK）
                     in 11..13 -> R.drawable.hirumesi      // お昼ごはん
                     in 14..16 -> R.drawable.oyatu      // おやつタイム
-                    in 17..20 -> R.drawable.tomato      // 晩ごはん
-                    else -> R.drawable.kabotyaneko      // 夜食？
+                    in 17..20 -> R.drawable.banmesi      // 晩ごはん
+                    else -> R.drawable.yasyoku // 夜食？
                 }
             }
 
