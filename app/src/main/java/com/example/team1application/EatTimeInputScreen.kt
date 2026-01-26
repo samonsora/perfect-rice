@@ -34,6 +34,13 @@ import java.util.Date
 import java.util.Locale
 import java.util.Calendar
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.draw.scale
+
+
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +52,19 @@ fun FoodInputScreen(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val dataManager = remember { MealDataManager(context) }
+    val isDark = isSystemInDarkTheme()
+
+// 💗 選択中：ピンク
+    val selectedPink = if (isDark)
+        Color(0xFFF06292)   // ダーク時：少し落ち着いたピンク
+    else
+        Color(0xFFFF4081)   // ライト時：明るいピンク
+
+// 💜 未選択：淡い紫
+    val unselectedPurple = if (isDark)
+        Color(0xFF4A3A8C)   // ダーク時：深め紫
+    else
+        Color(0xFFE1BEE7)   // ライト時：淡い紫
     val calendar = remember { Calendar.getInstance() }
     val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
     val currentMinute = calendar.get(Calendar.MINUTE)
@@ -57,6 +77,9 @@ fun FoodInputScreen(
         in 22..23, in 0..3 -> "夜食"
         else -> "間食"
     }
+    var lastMealBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+
 
     // --- 状態管理 ---
     var hour by remember { mutableStateOf(currentHour) }
@@ -114,21 +137,33 @@ fun FoodInputScreen(
         mealTypes.chunked(3).forEach { rowTypes ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 rowTypes.forEach { type ->
+
+                    // ⭐ ここに書く！
+                    val scale by animateFloatAsState(
+                        targetValue = if (mealType == type) 1.08f else 1.0f,
+                        animationSpec = tween(
+                            durationMillis = 200,
+                            easing = FastOutSlowInEasing
+                        ),
+                        label = "mealButtonScale"
+                    )
+
                     Button(
                         onClick = { mealType = type },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .scale(scale),   // ← ここで使う
                         enabled = !isSaved,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (mealType == type)
-                                MaterialTheme.colorScheme.primary
+                                selectedPink
                             else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (mealType == type)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                unselectedPurple,
+                            contentColor = Color.White
                         )
-                    ) { Text(type, fontSize = 12.sp, maxLines = 1) }
+                    ) {
+                        Text(type, fontSize = 12.sp, maxLines = 1)
+                    }
                 }
             }
         }
@@ -214,6 +249,8 @@ fun FoodInputScreen(
                 onClick = {
                     if (isSaved) return@Button
                     isSaved = true
+
+                    lastMealBitmap = photoBitmap
                     val newRecord = MealRecord(
                         date = SimpleDateFormat("yyyy/MM/dd", Locale.JAPAN).format(Date()),
                         type = mealType,
@@ -230,6 +267,21 @@ fun FoodInputScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = if (isSaved) Color.Gray else MaterialTheme.colorScheme.tertiary)
             ) {
                 Text(if (isSaved) "保存完了 ✅" else "この内容で保存する")
+            }
+        }
+        if (!isAnalysisDone) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "📷 写真があるとAIの精度が上がります ✨",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 1f)
+                )
             }
         }
         Spacer(modifier = Modifier.height(80.dp))
@@ -283,5 +335,8 @@ class GeminiManager(apiKey: String) {
             Log.e("GeminiManager", "Error", e)
             null
         }
+
+
     }
 }
+
