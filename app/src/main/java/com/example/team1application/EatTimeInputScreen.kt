@@ -277,11 +277,7 @@ fun FoodInputScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "📷 写真があるとAIの精度が上がります ✨",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 1f)
-                )
+
             }
         }
         Spacer(modifier = Modifier.height(80.dp))
