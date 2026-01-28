@@ -311,8 +311,10 @@ class GeminiManager(apiKey: String) {
 
     suspend fun analyzeMealImage(bitmap: Bitmap): MealRecord? {
         val promptText = """
+            あなたはプロの栄養管理士です。
             この食事画像を分析して、以下の情報を日本語のJSON形式で返してください。
-            {"menu": "料理名", "calories": 500, "score": 8, "advice": "アドバイス"}
+            スコアの基準は栄養素バランスと健康度に指定
+            {"menu": "料理名", "calories": "数字", "score": "1 ~ 10", "advice": "アドバイス"}
             注意：純粋なJSONのみ出力してください。
         """.trimIndent()
 
